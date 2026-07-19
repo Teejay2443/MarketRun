@@ -104,7 +104,7 @@ const sidebarItems = [
   { key: "shopper", label: "My Jobs", icon: Briefcase },
   { key: "browse", label: "Find Errands", icon: Search },
   { key: "wallet", label: "Wallet", icon: Wallet },
-  { key: "monnify", label: "Monnify Features", icon: CreditCard },
+  { key: "monnify", label: "Payment Infrastructure", icon: CreditCard },
 ];
 
 export default function DashboardPage() {
@@ -491,7 +491,7 @@ export default function DashboardPage() {
                   {activeTab === "shopper" && "Errands you've accepted as a shopper."}
                   {activeTab === "browse" && "Find open errands to earn money."}
                   {activeTab === "wallet" && "Your earnings and withdrawals."}
-                  {activeTab === "monnify" && "Monnify payment infrastructure features."}
+                  {activeTab === "monnify" && "Monnify payment infrastructure and platform tools."}
                 </p>
               </div>
               <Link href="/create">
