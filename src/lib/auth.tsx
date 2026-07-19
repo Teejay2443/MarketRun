@@ -11,6 +11,9 @@ interface User {
   rating: number;
   walletBalance: number;
   totalEarned: number;
+  reservedAccountNumber?: string | null;
+  reservedAccountBank?: string | null;
+  kycStatus?: string;
 }
 
 interface AuthContextType {
@@ -19,6 +22,7 @@ interface AuthContextType {
   signup: (name: string, email: string, password: string, estate: string) => Promise<{ success: boolean; error?: string }>;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,12 +31,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchSession = async () => {
+    try {
+      const res = await fetch("/api/auth/session");
+      const data = await res.json();
+      setUser(data.user);
+    } catch {
+      setUser(null);
+    }
+  };
+
   useEffect(() => {
-    fetch("/api/auth/session")
-      .then((r) => r.json())
-      .then((data) => setUser(data.user))
-      .catch(() => setUser(null))
-      .finally(() => setIsLoading(false));
+    fetchSession().finally(() => setIsLoading(false));
   }, []);
 
   const signup = async (name: string, email: string, password: string, estate: string) => {
@@ -74,8 +84,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    await fetchSession();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, signup, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, signup, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

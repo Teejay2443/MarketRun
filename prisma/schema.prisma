@@ -17,8 +17,19 @@ model User {
   rating        Float    @default(5.0)
   walletBalance Float    @default(0)
   totalEarned   Float    @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+
+  // Monnify Reserved Account
+  reservedAccountNumber String?
+  reservedAccountBank   String?
+  reservedAccountRef    String?
+
+  // KYC
+  kycStatus   String   @default("UNVERIFIED")
+  kycBvn      String?
+  kycVerifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   errandsAsRequester Errand[] @relation("RequesterErrands")
   errandsAsShopper   Errand[] @relation("ShopperErrands")
@@ -40,8 +51,14 @@ model Errand {
   monnifyRef  String?
   paymentRef  String?
   paymentStatus String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  // Monnify Invoice
+  invoiceId    String?
+  invoiceUrl   String?
+  invoiceRef   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   requester User    @relation("RequesterErrands", fields: [requesterId], references: [id])
   shopper   User?   @relation("ShopperErrands", fields: [shopperId], references: [id])
@@ -60,4 +77,24 @@ model Transaction {
   createdAt     DateTime @default(now())
 
   errand Errand @relation(fields: [errandId], references: [id])
+}
+
+model WebhookLog {
+  id          String   @id @default(cuid())
+  eventType   String
+  payload     String
+  signature   String?
+  processed   Boolean  @default(false)
+  idempotencyKey String? @unique
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entityType String
+  entityId  String
+  userId    String?
+  details   String?
+  createdAt DateTime @default(now())
 }

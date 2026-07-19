@@ -27,6 +27,13 @@ import {
   CreditCard,
   Briefcase,
   LayoutDashboard,
+  Shield,
+  FileText,
+  Building2,
+  Copy,
+  ExternalLink,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -96,6 +103,7 @@ const sidebarItems = [
   { key: "shopper", label: "My Jobs", icon: Briefcase },
   { key: "browse", label: "Find Errands", icon: Search },
   { key: "wallet", label: "Wallet", icon: Wallet },
+  { key: "monnify", label: "Monnify Features", icon: CreditCard },
 ];
 
 export default function DashboardPage() {
@@ -115,6 +123,17 @@ export default function DashboardPage() {
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
   const [withdrawing, setWithdrawing] = useState(false);
+
+  // Monnify features state
+  const [reservedAccount, setReservedAccount] = useState<{ accountNumber?: string; bankName?: string; kycStatus?: string } | null>(null);
+  const [bvnInput, setBvnInput] = useState("");
+  const [creatingAccount, setCreatingAccount] = useState(false);
+  const [verifyingKyc, setVerifyingKyc] = useState(false);
+  const [selectedErrandForInvoice, setSelectedErrandForInvoice] = useState<string>("");
+  const [invoiceData, setInvoiceData] = useState<{ url?: string; id?: string } | null>(null);
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
+  const [splitData, setSplitData] = useState<{ platformFee?: number; shopperPayout?: number } | null>(null);
+  const [auditLogs, setAuditLogs] = useState<Array<{ id: string; action: string; entityType: string; createdAt: string; details?: string }>>([]);
 
   useEffect(() => {
     if (user) fetchAll();
@@ -201,6 +220,118 @@ export default function DashboardPage() {
     }
     setWithdrawing(false);
   };
+
+  // ============================================================
+  // MONNIFY FEATURES
+  // ============================================================
+
+  const fetchMonnifyData = async () => {
+    try {
+      const opts: RequestInit = { credentials: "include" };
+      const [reservedRes, auditRes] = await Promise.all([
+        fetch("/api/reserved-account", opts),
+        fetch("/api/audit?limit=20", opts),
+      ]);
+      if (reservedRes.ok) setReservedAccount(await reservedRes.json());
+      if (auditRes.ok) setAuditLogs(await auditRes.json());
+    } catch { /* ignore */ }
+  };
+
+  const handleCreateReservedAccount = async () => {
+    if (!bvnInput || bvnInput.length !== 11) {
+      toast.error("Please enter a valid 11-digit BVN");
+      return;
+    }
+    setCreatingAccount(true);
+    try {
+      const res = await fetch("/api/reserved-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ bvn: bvnInput }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setReservedAccount(data);
+        setBvnInput("");
+        toast.success("Reserved account created! You now have a personal bank account number.");
+      } else {
+        toast.error(data.error || "Failed to create account");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    }
+    setCreatingAccount(false);
+  };
+
+  const handleVerifyKyc = async () => {
+    if (!bvnInput || bvnInput.length !== 11) {
+      toast.error("Please enter a valid 11-digit BVN");
+      return;
+    }
+    setVerifyingKyc(true);
+    try {
+      const res = await fetch("/api/kyc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ bvn: bvnInput }),
+      });
+      const data = await res.json();
+      if (data.verified) {
+        toast.success(`KYC verified! Name: ${data.fullName || "Confirmed"}`);
+        fetchMonnifyData();
+      } else {
+        toast.error(data.message || "Verification failed");
+      }
+    } catch {
+      toast.error("Verification failed");
+    }
+    setVerifyingKyc(false);
+  };
+
+  const handleCreateInvoice = async () => {
+    if (!selectedErrandForInvoice) {
+      toast.error("Please select an errand");
+      return;
+    }
+    setCreatingInvoice(true);
+    try {
+      const res = await fetch("/api/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ errandId: selectedErrandForInvoice }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setInvoiceData(data.invoice);
+        toast.success("Invoice created!");
+      } else {
+        toast.error(data.error || "Failed to create invoice");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    }
+    setCreatingInvoice(false);
+  };
+
+  const fetchSplitData = async (errandId: string) => {
+    try {
+      const res = await fetch(`/api/split?errandId=${errandId}`, { credentials: "include" });
+      const data = await res.json();
+      setSplitData(data);
+    } catch { /* ignore */ }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard!");
+  };
+
+  useEffect(() => {
+    if (user && activeTab === "monnify") fetchMonnifyData();
+  }, [user, activeTab]);
 
   const filteredOpenErrands = openErrands.filter((errand) => {
     const matchesSearch = errand.title.toLowerCase().includes(searchQuery.toLowerCase()) || errand.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -324,6 +455,7 @@ export default function DashboardPage() {
                   {activeTab === "shopper" && "Errands you've accepted as a shopper."}
                   {activeTab === "browse" && "Find open errands to earn money."}
                   {activeTab === "wallet" && "Your earnings and withdrawals."}
+                  {activeTab === "monnify" && "Monnify payment infrastructure features."}
                 </p>
               </div>
               <Link href="/create">
@@ -501,6 +633,141 @@ export default function DashboardPage() {
                                   <p className="font-semibold text-accent text-sm">+₦{tx.shopperPayout.toLocaleString()}</p>
                                   <p className="text-xs text-muted-foreground">Fee: ₦{tx.platformFee.toLocaleString()}</p>
                                 </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* Monnify Features */}
+                {activeTab === "monnify" && (
+                  <div className="space-y-6">
+                    {/* Reserved Account */}
+                    <Card className="border-border/50">
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                            <Building2 className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">Reserved Account</h3>
+                            <p className="text-sm text-muted-foreground">Your personal bank account number for receiving payments</p>
+                          </div>
+                        </div>
+                        {reservedAccount?.accountNumber ? (
+                          <div className="bg-muted/50 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm text-muted-foreground">Account Number</span>
+                              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(reservedAccount.accountNumber!)}>
+                                <Copy className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <p className="text-2xl font-bold font-mono">{reservedAccount.accountNumber}</p>
+                            <p className="text-sm text-muted-foreground mt-1">{reservedAccount.bankName || "Moniepoint MFB"}</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <Input placeholder="Enter your 11-digit BVN" value={bvnInput} onChange={(e) => setBvnInput(e.target.value)} maxLength={11} />
+                            <div className="flex gap-2">
+                              <Button onClick={handleCreateReservedAccount} disabled={creatingAccount} className="bg-primary hover:bg-primary/90">
+                                {creatingAccount ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Building2 className="w-4 h-4 mr-2" />}
+                                Create Account
+                              </Button>
+                              <Button variant="outline" onClick={handleVerifyKyc} disabled={verifyingKyc}>
+                                {verifyingKyc ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Shield className="w-4 h-4 mr-2" />}
+                                Verify KYC
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Invoice Generator */}
+                    <Card className="border-border/50">
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 bg-secondary/10 rounded-xl flex items-center justify-center">
+                            <FileText className="w-5 h-5 text-secondary" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">Dynamic Invoice</h3>
+                            <p className="text-sm text-muted-foreground">Generate a payment invoice for any errand</p>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <select value={selectedErrandForInvoice} onChange={(e) => { setSelectedErrandForInvoice(e.target.value); if (e.target.value) fetchSplitData(e.target.value); }} className="w-full px-4 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                            <option value="">Select an errand...</option>
+                            {myErrands.map((e) => (<option key={e.id} value={e.id}>{e.title} (₦{(e.budget + e.reward).toLocaleString()})</option>))}
+                          </select>
+                          <Button onClick={handleCreateInvoice} disabled={creatingInvoice || !selectedErrandForInvoice} className="w-full bg-primary hover:bg-primary/90">
+                            {creatingInvoice ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
+                            Generate Invoice
+                          </Button>
+                          {invoiceData && (
+                            <div className="bg-muted/50 rounded-lg p-4">
+                              <p className="text-sm font-medium mb-2">Invoice Created!</p>
+                              <div className="flex items-center gap-2">
+                                <code className="text-xs bg-background px-2 py-1 rounded flex-1 truncate">{invoiceData.id}</code>
+                                <Button variant="ghost" size="sm" onClick={() => window.open(invoiceData.url, "_blank")}>
+                                  <ExternalLink className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Split Payment */}
+                    <Card className="border-border/50">
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center">
+                            <CreditCard className="w-5 h-5 text-accent" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">Transaction Splitting</h3>
+                            <p className="text-sm text-muted-foreground">Automatic 90/10 split at the payment level</p>
+                          </div>
+                        </div>
+                        {splitData ? (
+                          <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Platform Fee (10%)</span><span className="font-medium">₦{(splitData.platformFee || 0).toLocaleString()}</span></div>
+                            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Shopper Payout (90%)</span><span className="font-medium text-primary">₦{(splitData.shopperPayout || 0).toLocaleString()}</span></div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Select an errand above to see the split calculation.</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Audit Trail */}
+                    <Card className="border-border/50">
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                            <RefreshCw className="w-5 h-5 text-blue-500" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">Audit Trail</h3>
+                            <p className="text-sm text-muted-foreground">Every event tracked for transparency</p>
+                          </div>
+                        </div>
+                        {auditLogs.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-4">No audit logs yet. Events will appear here as you use the platform.</p>
+                        ) : (
+                          <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {auditLogs.map((log) => (
+                              <div key={log.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
+                                <div>
+                                  <span className="font-medium">{log.action}</span>
+                                  <span className="text-muted-foreground ml-2">{log.entityType}</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">{new Date(log.createdAt).toLocaleString()}</span>
                               </div>
                             ))}
                           </div>

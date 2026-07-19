@@ -32,6 +32,11 @@ export async function POST(request: NextRequest) {
       estate: user.estate,
       role: user.role,
       rating: user.rating,
+      walletBalance: user.walletBalance,
+      totalEarned: user.totalEarned,
+      reservedAccountNumber: user.reservedAccountNumber,
+      reservedAccountBank: user.reservedAccountBank,
+      kycStatus: user.kycStatus,
     });
 
     response.cookies.set("marketrun_token", token, {

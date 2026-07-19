@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
@@ -20,6 +21,7 @@ import {
   CreditCard,
   Share2,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -78,6 +80,9 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
   const [isFunding, setIsFunding] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [refundLoading, setRefundLoading] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundReason, setRefundReason] = useState("");
 
   useEffect(() => {
     fetchErrand();
@@ -185,6 +190,31 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
       toast.error("Something went wrong");
     }
     setActionLoading(false);
+  };
+
+  const handleRefund = async () => {
+    if (!errand || !refundReason) return;
+    setRefundLoading(true);
+    try {
+      const res = await fetch("/api/refunds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ errandId: errand.id, reason: refundReason }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setShowRefundModal(false);
+        setRefundReason("");
+        fetchErrand();
+      } else {
+        toast.error(data.error || "Refund failed");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    }
+    setRefundLoading(false);
   };
 
   const handleWhatsApp = () => {
@@ -391,6 +421,12 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
                     </div>
                   )}
 
+                  {isRequester && (errand.status === "COMPLETED" || errand.status === "DELIVERED") && (
+                    <Button className="w-full mt-2" variant="destructive" onClick={() => setShowRefundModal(true)}>
+                      <AlertCircle className="w-4 h-4 mr-2" /> Request Refund
+                    </Button>
+                  )}
+
                   <Button className="w-full mt-3" variant="outline" onClick={handleWhatsApp}>
                     <Share2 className="w-4 h-4 mr-2" /> Share via WhatsApp
                   </Button>
@@ -444,6 +480,36 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
       </div>
+
+      {/* Refund Modal */}
+      {showRefundModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowRefundModal(false)}>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-8 w-full max-w-md border border-border/50 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-2xl font-bold mb-2">Request Refund</h2>
+            <p className="text-muted-foreground mb-6">Refund amount: ₦{(errand.budget + errand.reward).toLocaleString()}</p>
+            <div className="space-y-4">
+              <div>
+                <Label>Reason for refund</Label>
+                <select value={refundReason} onChange={(e) => setRefundReason(e.target.value)} className="w-full mt-1 px-4 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  <option value="">Select a reason...</option>
+                  <option value="Wrong items delivered">Wrong items delivered</option>
+                  <option value="Items damaged">Items damaged</option>
+                  <option value="Items not as described">Items not as described</option>
+                  <option value="Partial delivery">Partial delivery</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setShowRefundModal(false)}>Cancel</Button>
+                <Button variant="destructive" className="flex-1" onClick={handleRefund} disabled={refundLoading || !refundReason}>
+                  {refundLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Submit Refund
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
