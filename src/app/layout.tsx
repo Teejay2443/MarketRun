@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
-import { BottomNav } from "@/components/bottom-nav";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -33,10 +32,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Providers>
-          <div className="flex-1 pb-16 md:pb-0">
-            {children}
-          </div>
-          <BottomNav />
+          {children}
           <Toaster />
         </Providers>
       </body>
