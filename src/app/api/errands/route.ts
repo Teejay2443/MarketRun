@@ -31,11 +31,19 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {};
 
+    // Exclude COMPLETED errands from public listings
+    if (mine !== "requester" && mine !== "shopper") {
+      if (status && status !== "all") {
+        where.status = status;
+      } else {
+        where.status = { not: "COMPLETED" };
+      }
+    } else if (status && status !== "all") {
+      where.status = status;
+    }
+
     if (market && market !== "all") {
       where.market = { contains: market, mode: "insensitive" };
-    }
-    if (status && status !== "all") {
-      where.status = status;
     }
     if (search) {
       where.OR = [
