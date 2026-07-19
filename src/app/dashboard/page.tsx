@@ -34,6 +34,7 @@ import {
   ExternalLink,
   AlertCircle,
   RefreshCw,
+  LogOut,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -400,12 +401,15 @@ export default function DashboardPage() {
             })}
           </nav>
 
-          <div className="p-4 border-t border-border/50">
+          <div className="p-4 border-t border-border/50 space-y-2">
             <Link href="/create">
               <Button className="w-full bg-primary hover:bg-primary/90">
                 <Plus className="w-4 h-4 mr-2" /> Post Errand
               </Button>
             </Link>
+            <Button variant="outline" className="w-full" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/"; }}>
+              <LogOut className="w-4 h-4 mr-2" /> Logout
+            </Button>
           </div>
         </aside>
 
