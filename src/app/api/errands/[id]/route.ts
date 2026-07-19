@@ -48,7 +48,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const { id } = await params;
     const body = await request.json();
-    const { status, shopperId } = body;
+    const { status, shopperId, paymentRef: newPaymentRef } = body;
 
     const errand = await prisma.errand.findUnique({ where: { id } });
     if (!errand) {
@@ -57,6 +57,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {};
+
+    // Requester can update paymentRef before funding
+    if (newPaymentRef && errand.requesterId === userId && !errand.paymentRef) {
+      updateData.paymentRef = newPaymentRef;
+    }
 
     // Accept errand (shopper picks it up)
     if (shopperId && errand.status === "OPEN") {
@@ -68,7 +73,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     if (status) {
-      // Shopper: ACCEPTED → SHOPPING → DELIVERED
+      // Requester: OPEN/ACCEPTED → FUNDED (after Monnify payment)
+      if (status === "FUNDED") {
+        if (errand.requesterId !== userId) {
+          return NextResponse.json({ error: "Only the requester can fund an errand" }, { status: 403 });
+        }
+        if (errand.status !== "OPEN" && errand.status !== "ACCEPTED") {
+          return NextResponse.json({ error: "Errand must be open or accepted to fund" }, { status: 400 });
+        }
+        if (body.monnifyRef) {
+          updateData.monnifyRef = body.monnifyRef;
+          updateData.paymentStatus = "PAID";
+        }
+      }
+      // Shopper: ACCEPTED/FUNDED → SHOPPING → DELIVERED
       if (["SHOPPING", "DELIVERED"].includes(status)) {
         if (errand.shopperId !== userId) {
           return NextResponse.json({ error: "Only the assigned shopper can do this" }, { status: 403 });

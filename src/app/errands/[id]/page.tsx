@@ -46,6 +46,7 @@ interface Errand {
   shopper: { id: string; name: string; estate: string | null; rating: number } | null;
   requesterId: string;
   shopperId: string | null;
+  paymentRef?: string;
 }
 
 const statusSteps = [
@@ -102,7 +103,17 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
 
     try {
       const totalAmount = errand.budget + errand.reward;
-      const paymentRef = `MRN-${Date.now()}`;
+      const paymentRef = errand.paymentRef || `MRN-${Date.now()}`;
+
+      // Update errand with paymentRef if it doesn't have one
+      if (!errand.paymentRef) {
+        await fetch(`/api/errands/${errand.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ status: errand.status, paymentRef }),
+        });
+      }
 
       const response = await fetch("/api/monnify/init", {
         method: "POST",
