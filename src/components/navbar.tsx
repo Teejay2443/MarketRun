@@ -117,9 +117,6 @@ export function Navbar() {
                 user ? (
                   <>
                     <Link href="/dashboard" className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg hover:bg-primary/15 transition-colors">
-                      <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center">
-                        <span className="text-xs font-bold text-primary-foreground">{user.name.charAt(0)}</span>
-                      </div>
                       <span className="text-sm font-medium">{user.name.split(" ")[0]}</span>
                     </Link>
                     <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -179,9 +176,6 @@ export function Navbar() {
                           onClick={() => setIsOpen(false)}
                           className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg"
                         >
-                          <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center">
-                            <span className="text-xs font-bold text-primary-foreground">{user.name.charAt(0)}</span>
-                          </div>
                           <span className="text-sm font-medium">{user.name}</span>
                         </Link>
                         <Button variant="outline" className="w-full" onClick={() => { handleLogout(); setIsOpen(false); }}>

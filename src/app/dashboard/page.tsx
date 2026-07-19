@@ -397,14 +397,9 @@ export default function DashboardPage() {
         {/* Sidebar */}
         <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-card border-r border-border/50 sticky top-0 h-screen">
           <div className="p-6 border-b border-border/50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <span className="text-sm font-bold text-primary-foreground">{user.name.charAt(0)}</span>
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-sm truncate">{user.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-              </div>
+            <div>
+              <p className="font-semibold text-sm truncate">{user.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
           </div>
 
