@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  password      String
+  estate        String?
+  role          String   @default("requester")
+  rating        Float    @default(5.0)
+  walletBalance Float    @default(0)
+  totalEarned   Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  errandsAsRequester Errand[] @relation("RequesterErrands")
+  errandsAsShopper   Errand[] @relation("ShopperErrands")
+}
+
+model Errand {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  market      String
+  items       String
+  budget      Float
+  reward      Float
+  status      String   @default("OPEN")
+  address     String
+  estate      String?
+  requesterId String
+  shopperId   String?
+  monnifyRef  String?
+  paymentRef  String?
+  paymentStatus String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requester User    @relation("RequesterErrands", fields: [requesterId], references: [id])
+  shopper   User?   @relation("ShopperErrands", fields: [shopperId], references: [id])
+
+  transactions Transaction[]
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  errandId      String
+  amount        Float
+  platformFee   Float
+  shopperPayout Float
+  monnifyRef    String?
+  status        String   @default("PENDING")
+  createdAt     DateTime @default(now())
+
+  errand Errand @relation(fields: [errandId], references: [id])
+}
