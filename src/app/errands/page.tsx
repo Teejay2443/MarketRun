@@ -7,13 +7,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Search,
@@ -21,7 +14,6 @@ import {
   Clock,
   Star,
   ShoppingBag,
-  Filter,
   ArrowRight,
   Loader2,
   Check,
@@ -88,17 +80,23 @@ export default function ErrandsPage() {
   const [selectedMarket, setSelectedMarket] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    fetchErrands();
+    fetchErrands(1);
   }, []);
 
-  const fetchErrands = async () => {
+  const fetchErrands = async (pageNum: number) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/errands");
+      const params = new URLSearchParams({ page: String(pageNum), limit: "12" });
+      const res = await fetch(`/api/errands?${params.toString()}`);
       const data = await res.json();
-      setErrands(data);
+      setErrands(data.errands || (Array.isArray(data) ? data : []));
+      setTotalPages(data.pagination?.totalPages || 1);
+      setTotal(data.pagination?.total || 0);
     } catch {
       toast.error("Failed to load errands");
     }
@@ -115,11 +113,12 @@ export default function ErrandsPage() {
       const res = await fetch(`/api/errands/${errandId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ shopperId: user.id }),
       });
       if (res.ok) {
         toast.success("Errand accepted! Check your dashboard.");
-        fetchErrands();
+        fetchErrands(page);
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to accept errand");
@@ -130,11 +129,23 @@ export default function ErrandsPage() {
     setAcceptingId(null);
   };
 
+  const handleSearch = () => {
+    setPage(1);
+    fetchErrands(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    fetchErrands(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const filteredErrands = errands.filter((errand) => {
     const matchesSearch =
       errand.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      errand.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesMarket = selectedMarket === "all" || errand.market === selectedMarket;
+      errand.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      errand.market.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesMarket = selectedMarket === "all" || errand.market.includes(selectedMarket);
     const matchesStatus = selectedStatus === "all" || errand.status === selectedStatus;
     return matchesSearch && matchesMarket && matchesStatus;
   });
@@ -148,37 +159,47 @@ export default function ErrandsPage() {
       <div className="bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">Browse Active Errands</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-4">Browse Errands</h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Find errands from your community and help neighbors get their groceries.
+              Find errands from any community and help someone shop. You don&apos;t have to be in the same area!
             </p>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex flex-col md:flex-row gap-4 max-w-4xl mx-auto">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input placeholder="Search errands..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 h-12" />
+              <Input
+                placeholder="Search by title, description, or market..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="pl-10 h-12"
+              />
             </div>
-            <Select value={selectedMarket} onValueChange={(v) => v && setSelectedMarket(v)}>
-              <SelectTrigger className="w-full md:w-48 h-12"><MapPin className="w-4 h-4 mr-2" /><SelectValue placeholder="Market" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Markets</SelectItem>
-                <SelectItem value="Balogun Market">Balogun Market</SelectItem>
-                <SelectItem value="Mile 12 Market">Mile 12 Market</SelectItem>
-                <SelectItem value="Mile 3 Market">Mile 3 Market</SelectItem>
-                <SelectItem value="Oshodi Market">Oshodi Market</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={selectedStatus} onValueChange={(v) => v && setSelectedStatus(v)}>
-              <SelectTrigger className="w-full md:w-48 h-12"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="OPEN">Active</SelectItem>
-                <SelectItem value="ACCEPTED">Accepted</SelectItem>
-                <SelectItem value="FUNDED">Funded</SelectItem>
-                <SelectItem value="SHOPPING">Shopping</SelectItem>
-              </SelectContent>
-            </Select>
+            <select
+              value={selectedMarket}
+              onChange={(e) => { setSelectedMarket(e.target.value); setPage(1); }}
+              className="px-4 h-12 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="all">All Markets</option>
+              <option value="Balogun">Balogun Market</option>
+              <option value="Mile 12">Mile 12 Market</option>
+              <option value="Mile 3">Mile 3 Market</option>
+              <option value="Oshodi">Oshodi Market</option>
+              <option value="Alaba">Alaba Market</option>
+              <option value="Oyingbo">Oyingbo Market</option>
+            </select>
+            <select
+              value={selectedStatus}
+              onChange={(e) => { setSelectedStatus(e.target.value); setPage(1); }}
+              className="px-4 h-12 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="all">All Status</option>
+              <option value="OPEN">Active</option>
+              <option value="ACCEPTED">Accepted</option>
+              <option value="FUNDED">Funded</option>
+              <option value="SHOPPING">Shopping</option>
+            </select>
           </motion.div>
         </div>
       </div>
@@ -186,7 +207,7 @@ export default function ErrandsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <p className="text-muted-foreground">
-            <span className="font-semibold text-foreground">{filteredErrands.length}</span> errands found
+            <span className="font-semibold text-foreground">{total}</span> errands found
           </p>
         </div>
 
@@ -279,6 +300,43 @@ export default function ErrandsPage() {
             <ShoppingBag className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-semibold mb-2">No errands found</h3>
             <p className="text-muted-foreground">Try adjusting your filters or search query.</p>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 pt-8">
+            <Button variant="outline" onClick={() => handlePageChange(page - 1)} disabled={page === 1}>
+              Previous
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum: number;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (page <= 3) {
+                  pageNum = i + 1;
+                } else if (page >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = page - 2 + i;
+                }
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={page === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(pageNum)}
+                    className={page === pageNum ? "bg-primary" : ""}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            <Button variant="outline" onClick={() => handlePageChange(page + 1)} disabled={page === totalPages}>
+              Next
+            </Button>
           </div>
         )}
       </div>

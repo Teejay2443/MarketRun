@@ -36,13 +36,15 @@ interface ShoppingItem {
   maxBudget: number;
 }
 
-const markets = [
+const popularMarkets = [
   "Balogun Market",
   "Mile 12 Market",
   "Mile 3 Market",
   "Oshodi Market",
   "Aspamda Market",
   "Oyingbo Market",
+  "Alaba International Market",
+  "Trade Fair Complex",
 ];
 
 const steps = [
@@ -226,12 +228,18 @@ export default function CreateErrandPage() {
                     </div>
                     <div>
                       <Label>Market *</Label>
-                      <Select value={formData.market} onValueChange={(value) => value && updateFormData("market", value)}>
-                        <SelectTrigger className="mt-1"><SelectValue placeholder="Select market" /></SelectTrigger>
-                        <SelectContent>
-                          {markets.map((market) => (<SelectItem key={market} value={market}>{market}</SelectItem>))}
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        id="market"
+                        placeholder="e.g., Balogun Market, or type any market name"
+                        value={formData.market}
+                        onChange={(e) => updateFormData("market", e.target.value)}
+                        className="mt-1"
+                        list="markets-list"
+                      />
+                      <datalist id="markets-list">
+                        {popularMarkets.map((m) => (<option key={m} value={m} />))}
+                      </datalist>
+                      <p className="text-xs text-muted-foreground mt-1">Type any market name or select from popular markets</p>
                     </div>
                   </div>
                 </CardContent>

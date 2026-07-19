@@ -136,32 +136,58 @@ export default function DashboardPage() {
   const [splitData, setSplitData] = useState<{ platformFee?: number; shopperPayout?: number } | null>(null);
   const [auditLogs, setAuditLogs] = useState<Array<{ id: string; action: string; entityType: string; createdAt: string; details?: string }>>([]);
 
+  // Pagination state for Find Errands
+  const [browsePage, setBrowsePage] = useState(1);
+  const [browseTotalPages, setBrowseTotalPages] = useState(1);
+  const [browseTotal, setBrowseTotal] = useState(0);
+  const [loadingBrowse, setLoadingBrowse] = useState(false);
+
   useEffect(() => {
     if (user) fetchAll();
   }, [user]);
+
+  useEffect(() => {
+    if (activeTab === "browse") {
+      fetchBrowseErrands(browsePage, searchQuery, selectedMarket);
+    }
+  }, [activeTab, browsePage]);
 
   const fetchAll = async () => {
     setLoading(true);
     try {
       const opts: RequestInit = { credentials: "include" };
-      const [errandsRes, jobsRes, openRes, walletRes] = await Promise.all([
+      const [errandsRes, jobsRes, walletRes] = await Promise.all([
         fetch("/api/errands?mine=requester", opts),
         fetch("/api/errands?mine=shopper", opts),
-        fetch("/api/errands?status=OPEN", opts),
         fetch("/api/wallet", opts),
       ]);
       const errandsData = await errandsRes.json();
       const jobsData = await jobsRes.json();
-      const openData = await openRes.json();
       const walletData = await walletRes.json();
-      setMyErrands(Array.isArray(errandsData) ? errandsData : []);
-      setMyJobs(Array.isArray(jobsData) ? jobsData : []);
-      setOpenErrands(Array.isArray(openData) ? openData.filter((e: Errand) => e.requesterId !== user?.id) : []);
+      setMyErrands(errandsData.errands || (Array.isArray(errandsData) ? errandsData : []));
+      setMyJobs(jobsData.errands || (Array.isArray(jobsData) ? jobsData : []));
       if (walletData.walletBalance !== undefined) setWallet(walletData);
     } catch {
       toast.error("Failed to load dashboard data");
     }
     setLoading(false);
+  };
+
+  const fetchBrowseErrands = async (page: number, search?: string, market?: string) => {
+    setLoadingBrowse(true);
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: "12" });
+      if (search) params.set("search", search);
+      if (market && market !== "all") params.set("market", market);
+      const res = await fetch(`/api/errands?${params.toString()}`, { credentials: "include" });
+      const data = await res.json();
+      setOpenErrands(data.errands || []);
+      setBrowseTotalPages(data.pagination?.totalPages || 1);
+      setBrowseTotal(data.pagination?.total || 0);
+    } catch {
+      toast.error("Failed to load errands");
+    }
+    setLoadingBrowse(false);
   };
 
   const handleAccept = async (errandId: string) => {
@@ -334,16 +360,22 @@ export default function DashboardPage() {
     if (user && activeTab === "monnify") fetchMonnifyData();
   }, [user, activeTab]);
 
-  const filteredOpenErrands = openErrands.filter((errand) => {
-    const matchesSearch = errand.title.toLowerCase().includes(searchQuery.toLowerCase()) || errand.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesMarket = selectedMarket === "all" || errand.market === selectedMarket;
-    return matchesSearch && matchesMarket;
-  });
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setBrowsePage(1);
+    fetchBrowseErrands(1, value, selectedMarket);
+  };
+
+  const handleMarketChange = (value: string) => {
+    setSelectedMarket(value);
+    setBrowsePage(1);
+    fetchBrowseErrands(1, searchQuery, value);
+  };
 
   const tabCounts: Record<string, number> = {
     requester: myErrands.length,
     shopper: myJobs.length,
-    browse: filteredOpenErrands.length,
+    browse: browseTotal,
     wallet: wallet?.transactions.length || 0,
   };
 
@@ -506,57 +538,83 @@ export default function DashboardPage() {
                 {/* Find Errands */}
                 {activeTab === "browse" && (
                   <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">Browse all errands across all markets. Help someone shop even if you're not in their area!</p>
                     <div className="flex flex-col md:flex-row gap-3 mb-4">
                       <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <input placeholder="Search errands..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                        <input placeholder="Search errands by title, description, or market..." value={searchQuery} onChange={(e) => handleSearchChange(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
-                      <select value={selectedMarket} onChange={(e) => setSelectedMarket(e.target.value)} className="px-4 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                      <select value={selectedMarket} onChange={(e) => handleMarketChange(e.target.value)} className="px-4 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
                         <option value="all">All Markets</option>
-                        <option value="Balogun Market">Balogun Market</option>
-                        <option value="Mile 12 Market">Mile 12 Market</option>
-                        <option value="Mile 3 Market">Mile 3 Market</option>
-                        <option value="Oshodi Market">Oshodi Market</option>
+                        <option value="Balogun">Balogun Market</option>
+                        <option value="Mile 12">Mile 12 Market</option>
+                        <option value="Mile 3">Mile 3 Market</option>
+                        <option value="Oshodi">Oshodi Market</option>
+                        <option value="Alaba">Alaba Market</option>
+                        <option value="Oyingbo">Oyingbo Market</option>
                       </select>
                     </div>
-                    {filteredOpenErrands.length === 0 ? (
-                      <EmptyState icon={Search} title="No open errands" desc="Check back later or try a different filter." />
+                    {loadingBrowse ? (
+                      <div className="text-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+                        <p className="text-muted-foreground">Loading errands...</p>
+                      </div>
+                    ) : openErrands.length === 0 ? (
+                      <EmptyState icon={Search} title="No errands found" desc="Check back later or try a different search." />
                     ) : (
-                      filteredOpenErrands.map((errand, index) => (
-                        <motion.div key={errand.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}>
-                          <Card className="border-border/50 card-hover">
-                            <CardContent className="p-5">
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                <div className="flex items-start gap-4">
-                                  <div className="w-11 h-11 bg-accent/10 rounded-xl flex items-center justify-center shrink-0">
-                                    <ShoppingBag className="w-5 h-5 text-accent" />
+                      <>
+                        <p className="text-xs text-muted-foreground">Showing {openErrands.length} of {browseTotal} errands</p>
+                        {openErrands.filter((e: Errand) => e.requesterId !== user?.id).map((errand, index) => (
+                          <motion.div key={errand.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}>
+                            <Card className="border-border/50 card-hover">
+                              <CardContent className="p-5">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                  <div className="flex items-start gap-4">
+                                    <div className="w-11 h-11 bg-accent/10 rounded-xl flex items-center justify-center shrink-0">
+                                      <ShoppingBag className="w-5 h-5 text-accent" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <Link href={`/errands/${errand.id}`} className="font-semibold text-sm hover:text-primary transition-colors truncate">{errand.title}</Link>
+                                        <Badge variant="secondary" className={`text-xs shrink-0 ${statusColors[errand.status]}`}>{errand.status}</Badge>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground line-clamp-1">{errand.description}</p>
+                                      <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{errand.market}</span>
+                                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeAgo(errand.createdAt)}</span>
+                                        {errand.estate && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{errand.estate}</span>}
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <Link href={`/errands/${errand.id}`} className="font-semibold text-sm hover:text-primary transition-colors truncate">{errand.title}</Link>
-                                      <Badge variant="secondary" className="bg-accent text-accent-foreground text-xs shrink-0">OPEN</Badge>
+                                  <div className="flex items-center gap-4 sm:shrink-0">
+                                    <div className="text-right">
+                                      <p className="text-xs text-muted-foreground">Reward</p>
+                                      <p className="font-bold text-primary">₦{errand.reward.toLocaleString()}</p>
                                     </div>
-                                    <p className="text-xs text-muted-foreground line-clamp-1">{errand.description}</p>
-                                    <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{errand.market}</span>
-                                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatTimeAgo(errand.createdAt)}</span>
-                                    </div>
+                                    {errand.status === "OPEN" && (
+                                      <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => handleAccept(errand.id)} disabled={acceptingId === errand.id}>
+                                        {acceptingId === errand.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-1" /> Accept</>}
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-4 sm:shrink-0">
-                                  <div className="text-right">
-                                    <p className="text-xs text-muted-foreground">Reward</p>
-                                    <p className="font-bold text-primary">₦{errand.reward.toLocaleString()}</p>
-                                  </div>
-                                  <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => handleAccept(errand.id)} disabled={acceptingId === errand.id}>
-                                    {acceptingId === errand.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-1" /> Accept</>}
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </motion.div>
-                      ))
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        ))}
+                        {/* Pagination */}
+                        {browseTotalPages > 1 && (
+                          <div className="flex items-center justify-center gap-2 pt-4">
+                            <Button variant="outline" size="sm" onClick={() => { setBrowsePage(p => Math.max(1, p - 1)); }} disabled={browsePage === 1}>
+                              Previous
+                            </Button>
+                            <span className="text-sm text-muted-foreground px-3">Page {browsePage} of {browseTotalPages}</span>
+                            <Button variant="outline" size="sm" onClick={() => { setBrowsePage(p => Math.min(browseTotalPages, p + 1)); }} disabled={browsePage === browseTotalPages}>
+                              Next
+                            </Button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

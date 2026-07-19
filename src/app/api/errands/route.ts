@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "marketrun-hackathon-secret-2026";
+const PAGE_SIZE = 12;
 
 function getUser(request: NextRequest): string | null {
   const token = request.cookies.get("marketrun_token")?.value;
@@ -15,7 +16,7 @@ function getUser(request: NextRequest): string | null {
   }
 }
 
-// GET /api/errands - List all errands (with filters)
+// GET /api/errands - List all errands (with filters + pagination)
 export async function GET(request: NextRequest) {
   try {
     const userId = getUser(request);
@@ -24,16 +25,23 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const mine = searchParams.get("mine");
     const search = searchParams.get("search");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || String(PAGE_SIZE));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {};
 
-    if (market && market !== "all") where.market = market;
-    if (status && status !== "all") where.status = status;
+    if (market && market !== "all") {
+      where.market = { contains: market, mode: "insensitive" };
+    }
+    if (status && status !== "all") {
+      where.status = status;
+    }
     if (search) {
       where.OR = [
         { title: { contains: search, mode: "insensitive" } },
         { description: { contains: search, mode: "insensitive" } },
+        { market: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -45,16 +53,30 @@ export async function GET(request: NextRequest) {
       where.status = "OPEN";
     }
 
-    const errands = await prisma.errand.findMany({
-      where,
-      include: {
-        requester: { select: { id: true, name: true, estate: true, rating: true } },
-        shopper: { select: { id: true, name: true, estate: true, rating: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const [errands, total] = await Promise.all([
+      prisma.errand.findMany({
+        where,
+        include: {
+          requester: { select: { id: true, name: true, estate: true, rating: true } },
+          shopper: { select: { id: true, name: true, estate: true, rating: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.errand.count({ where }),
+    ]);
 
-    return NextResponse.json(errands);
+    return NextResponse.json({
+      errands,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasMore: page * limit < total,
+      },
+    });
   } catch (error) {
     console.error("GET errands error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
