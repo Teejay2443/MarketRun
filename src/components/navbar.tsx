@@ -72,6 +72,7 @@ export function Navbar() {
       setCodeSent(true);
       setCodeCooldown(60);
       if (result.code) setDevCode(result.code);
+      setSignupStep("verify");
       toast.success("Verification code sent!");
     } else {
       setAuthError(result.error || "Failed to send code");
