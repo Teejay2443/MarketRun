@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -35,8 +35,10 @@ import {
   AlertCircle,
   RefreshCw,
   LogOut,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { AIChat } from "@/components/ai-chat";
 
 interface ErrandItem {
   name: string;
@@ -86,8 +88,10 @@ const statusColors: Record<string, string> = {
   ACCEPTED: "bg-secondary text-secondary-foreground",
   FUNDED: "bg-primary text-primary-foreground",
   SHOPPING: "bg-blue-500 text-white",
+  PRICE_REVIEW: "bg-orange-500 text-white",
   DELIVERED: "bg-purple-500 text-white",
   COMPLETED: "bg-muted text-muted-foreground",
+  CANCELLED: "bg-red-500 text-white",
 };
 
 function formatTimeAgo(dateString: string): string {
@@ -105,6 +109,7 @@ const sidebarItems = [
   { key: "browse", label: "Find Errands", icon: Search },
   { key: "wallet", label: "Wallet", icon: Wallet },
   { key: "monnify", label: "Payment Infrastructure", icon: CreditCard },
+  { key: "ai-chat", label: "AI Suggest", icon: Sparkles },
 ];
 
 export default function DashboardPage() {
@@ -141,15 +146,32 @@ export default function DashboardPage() {
   const [browseTotalPages, setBrowseTotalPages] = useState(1);
   const [browseTotal, setBrowseTotal] = useState(0);
   const [loadingBrowse, setLoadingBrowse] = useState(false);
+  const mainContentRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef<number>(0);
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (user) fetchAll();
   }, [user]);
 
   useEffect(() => {
+    // Save scroll position on scroll
+    const handleScroll = () => {
+      scrollPositionRef.current = window.scrollY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
     if (activeTab === "browse") {
       fetchBrowseErrands(browsePage, searchQuery, selectedMarket);
     }
+    // Restore scroll position when switching tabs
+    requestAnimationFrame(() => {
+      window.scrollTo(0, scrollPositionRef.current);
+    });
   }, [activeTab, browsePage]);
 
   const fetchAll = async () => {
@@ -395,30 +417,49 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       <div className="flex">
         {/* Sidebar */}
-        <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-card border-r border-border/50 sticky top-0 h-screen">
-          <div className="p-6 border-b border-border/50">
-            <div>
-              <p className="font-semibold text-sm truncate">{user.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+        <aside className={`hidden lg:flex flex-col ${sidebarCollapsed ? "w-16" : "w-64"} min-h-screen bg-card border-r border-border/50 sticky top-0 h-screen transition-all duration-300`}>
+          <div className={`border-b border-border/50 ${sidebarCollapsed ? "p-3" : "p-6"}`}>
+            <div className="flex items-center justify-between">
+              {!sidebarCollapsed && (
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm truncate">{user.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                </div>
+              )}
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors shrink-0"
+                title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {sidebarCollapsed ? (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
+                )}
+              </button>
             </div>
           </div>
 
-          <nav className="flex-1 p-4 space-y-1">
+          <nav className="flex-1 p-2 space-y-1">
             {sidebarItems.map((item) => {
               const isActive = activeTab === item.key;
+              const isAI = item.key === "ai-chat";
               return (
                 <button
                   key={item.key}
-                  onClick={() => setActiveTab(item.key)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                  onClick={() => isAI ? setShowAIChat(true) : setActiveTab(item.key)}
+                  className={`w-full flex items-center gap-3 ${sidebarCollapsed ? "justify-center px-2" : "px-4"} py-3 rounded-xl text-sm font-medium transition-all ${
                     isActive
                       ? "bg-primary text-primary-foreground shadow-md"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
+                  title={sidebarCollapsed ? item.label : undefined}
                 >
-                  <item.icon className="w-5 h-5" />
-                  <span className="flex-1 text-left">{item.label}</span>
-                  {tabCounts[item.key] > 0 && (
+                  <item.icon className="w-5 h-5 shrink-0" />
+                  {!sidebarCollapsed && (
+                    <span className="flex-1 text-left">{item.label}</span>
+                  )}
+                  {!sidebarCollapsed && tabCounts[item.key] > 0 && (
                     <span className={`text-xs px-2 py-0.5 rounded-full ${isActive ? "bg-primary-foreground/20" : "bg-muted"}`}>
                       {tabCounts[item.key]}
                     </span>
@@ -428,20 +469,16 @@ export default function DashboardPage() {
             })}
           </nav>
 
-          <div className="p-4 border-t border-border/50 space-y-2">
-            <Link href="/create">
-              <Button className="w-full bg-primary hover:bg-primary/90">
-                <Plus className="w-4 h-4 mr-2" /> Post Errand
-              </Button>
-            </Link>
+          <div className={`border-t border-border/50 ${sidebarCollapsed ? "p-2" : "p-4"}`}>
             <Button variant="outline" className="w-full" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/"; }}>
-              <LogOut className="w-4 h-4 mr-2" /> Logout
+              <LogOut className={`w-4 h-4 ${sidebarCollapsed ? "" : "mr-2"}`} />
+              {!sidebarCollapsed && "Logout"}
             </Button>
           </div>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 min-h-screen">
+        <main className="flex-1 min-h-screen transition-all duration-300">
           {/* Mobile Header */}
           <div className="lg:hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-6 px-4">
             <div className="flex items-center justify-between mb-4">
@@ -874,6 +911,8 @@ export default function DashboardPage() {
           </motion.div>
         </div>
       )}
+
+      <AIChat open={showAIChat} onClose={() => setShowAIChat(false)} />
     </div>
   );
 }

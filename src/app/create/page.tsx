@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ const steps = [
 
 export default function CreateErrandPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,6 +76,43 @@ export default function CreateErrandPage() {
     items: [{ name: "", quantity: "", brand: "", maxBudget: 0 }] as ShoppingItem[],
     reward: 0,
   });
+
+  // Auto-trigger AI suggestions when coming from AI Suggest button
+  useEffect(() => {
+    if (searchParams.get("ai") === "true") {
+      setCurrentStep(2);
+    }
+
+    // Pick up items from AI chat
+    if (searchParams.get("from") === "chat") {
+      const storedItems = sessionStorage.getItem("ai-selected-items");
+      if (storedItems) {
+        try {
+          const items = JSON.parse(storedItems) as Array<{
+            name: string;
+            quantity: string;
+            maxBudget: number;
+            category: string;
+            note: string;
+          }>;
+          setFormData((prev) => ({
+            ...prev,
+            items: items.map((item) => ({
+              name: item.name,
+              quantity: item.quantity,
+              brand: "",
+              maxBudget: item.maxBudget,
+            })),
+          }));
+          sessionStorage.removeItem("ai-selected-items");
+          setCurrentStep(2);
+          toast.success(`Added ${items.length} items from AI suggestions`);
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    }
+  }, [searchParams]);
 
   const updateFormData = (field: string, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -230,6 +269,9 @@ export default function CreateErrandPage() {
     <div className="min-h-screen bg-background">
       <div className="bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-8">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Link href="/dashboard" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4">
+            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+          </Link>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-3xl font-bold mb-2">Post an Errand</h1>
             <p className="text-muted-foreground">Tell us what you need and we&apos;ll match you with a trusted shopper.</p>

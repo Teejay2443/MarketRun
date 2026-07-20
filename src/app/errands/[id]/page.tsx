@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -24,6 +25,8 @@ import {
   AlertCircle,
   MessageSquare,
   Send,
+  XCircle,
+  DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -69,8 +72,10 @@ const statusColors: Record<string, string> = {
   ACCEPTED: "bg-secondary text-secondary-foreground",
   FUNDED: "bg-primary text-primary-foreground",
   SHOPPING: "bg-blue-500 text-white",
+  PRICE_REVIEW: "bg-orange-500 text-white",
   DELIVERED: "bg-purple-500 text-white",
   COMPLETED: "bg-muted text-muted-foreground",
+  CANCELLED: "bg-red-500 text-white",
 };
 
 export default function ErrandDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -94,6 +99,11 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
   const [reviewComment, setReviewComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
   const [existingReview, setExistingReview] = useState<{ rating: number; comment: string | null; reviewer: { name: string } } | null>(null);
+  const [showPriceIssueModal, setShowPriceIssueModal] = useState(false);
+  const [priceIssueItems, setPriceIssueItems] = useState<Array<{ name: string; quantity: string; maxBudget: number; actualPrice: number; note: string }>>([]);
+  const [submittingPriceIssue, setSubmittingPriceIssue] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellingErrand, setCancellingErrand] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -324,6 +334,143 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
+  const initPriceIssue = () => {
+    const currentItems: ErrandItem[] = JSON.parse(errand!.items);
+    setPriceIssueItems(
+      currentItems.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        maxBudget: item.maxBudget,
+        actualPrice: item.maxBudget,
+        note: "",
+      }))
+    );
+    setShowPriceIssueModal(true);
+  };
+
+  const handlePriceIssue = async () => {
+    if (!errand) return;
+    setSubmittingPriceIssue(true);
+    try {
+      // Update items with actual prices
+      const updatedItems = priceIssueItems.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        maxBudget: item.actualPrice,
+      }));
+      const newBudget = updatedItems.reduce((sum, item) => sum + item.maxBudget, 0);
+
+      const res = await fetch(`/api/errands/${errand.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          status: "PRICE_REVIEW",
+          items: JSON.stringify(updatedItems),
+          budget: newBudget,
+        }),
+      });
+
+      if (res.ok) {
+        // Send a message about the price issue
+        const priceNotes = priceIssueItems
+          .filter((item) => item.note || item.actualPrice !== item.maxBudget)
+          .map((item) => `${item.name}: ₦${item.maxBudget.toLocaleString()} → ₦${item.actualPrice.toLocaleString()}${item.note ? ` (${item.note})` : ""}`)
+          .join("\n");
+
+        await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            errandId: errand.id,
+            content: `Price update request:\n${priceNotes}\n\nNew total budget: ₦${newBudget.toLocaleString()}`,
+          }),
+        });
+
+        toast.success("Price issue reported. Waiting for requester approval.");
+        setShowPriceIssueModal(false);
+        fetchErrand();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to report price issue");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    }
+    setSubmittingPriceIssue(false);
+  };
+
+  const handleApprovePrice = async () => {
+    if (!errand) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/errands/${errand.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "APPROVE_PRICE" }),
+      });
+      if (res.ok) {
+        toast.success("Price approved! Shopping continues.");
+        fetchErrand();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to approve");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    }
+    setActionLoading(false);
+  };
+
+  const handleRejectPrice = async () => {
+    if (!errand) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/errands/${errand.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "REJECT_PRICE" }),
+      });
+      if (res.ok) {
+        toast.success("Price rejected. Please negotiate via chat.");
+        fetchErrand();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to reject");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    }
+    setActionLoading(false);
+  };
+
+  const handleCancelErrand = async () => {
+    if (!errand) return;
+    setCancellingErrand(true);
+    try {
+      const res = await fetch(`/api/errands/${errand.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: "CANCELLED" }),
+      });
+      if (res.ok) {
+        toast.success("Errand cancelled.");
+        setShowCancelModal(false);
+        fetchErrand();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to cancel");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    }
+    setCancellingErrand(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -353,13 +500,16 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
   const canMarkShopping = isShopper && errand.status === "ACCEPTED";
   const canMarkDelivered = isShopper && errand.status === "SHOPPING";
   const canConfirm = isRequester && errand.status === "DELIVERED";
+  const canReportPriceIssue = isShopper && errand.status === "SHOPPING";
+  const canApproveRejectPrice = isRequester && errand.status === "PRICE_REVIEW";
+  const canCancel = isRequester && ["OPEN", "ACCEPTED", "FUNDED"].includes(errand.status);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link href="/errands" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6">
-            <ArrowLeft className="w-4 h-4" /> Back to Errands
+          <Link href="/dashboard" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6">
+            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </Link>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -556,6 +706,24 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
                     </Button>
                   )}
 
+                  {canReportPriceIssue && (
+                    <Button className="w-full" size="lg" variant="outline" onClick={initPriceIssue} disabled={actionLoading}>
+                      <DollarSign className="w-5 h-5 mr-2" /> Report Price Issue
+                    </Button>
+                  )}
+
+                  {canApproveRejectPrice && (
+                    <div className="space-y-2">
+                      <Button className="w-full bg-accent hover:bg-accent/90" size="lg" onClick={handleApprovePrice} disabled={actionLoading}>
+                        {actionLoading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <CheckCircle2 className="w-5 h-5 mr-2" />}
+                        Approve New Prices
+                      </Button>
+                      <Button className="w-full" size="lg" variant="outline" onClick={handleRejectPrice} disabled={actionLoading}>
+                        <XCircle className="w-5 h-5 mr-2" /> Reject Prices
+                      </Button>
+                    </div>
+                  )}
+
                   {canConfirm && (
                     <Button className="w-full bg-accent hover:bg-accent/90" size="lg" onClick={() => handleStatusUpdate("COMPLETED")} disabled={actionLoading}>
                       {actionLoading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <CheckCircle2 className="w-5 h-5 mr-2" />}
@@ -592,6 +760,31 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
                     <Button className="w-full mt-2" variant="destructive" onClick={() => setShowRefundModal(true)}>
                       <AlertCircle className="w-4 h-4 mr-2" /> Request Refund
                     </Button>
+                  )}
+
+                  {canCancel && (
+                    <Button className="w-full mt-2" variant="destructive" onClick={() => setShowCancelModal(true)}>
+                      <XCircle className="w-4 h-4 mr-2" /> Cancel Errand
+                    </Button>
+                  )}
+
+                  {errand.status === "CANCELLED" && (
+                    <div className="text-center py-4">
+                      <XCircle className="w-12 h-12 text-red-500 mx-auto mb-2" />
+                      <p className="font-semibold text-red-500">Cancelled</p>
+                      <p className="text-sm text-muted-foreground">This errand has been cancelled.</p>
+                    </div>
+                  )}
+
+                  {errand.status === "PRICE_REVIEW" && (
+                    <div className="p-4 bg-orange-500/10 rounded-xl mt-2">
+                      <p className="font-semibold text-orange-600 flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" /> Price Review in Progress
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {isShopper ? "Waiting for requester to review new prices." : "Shopper reported different prices. Please review."}
+                      </p>
+                    </div>
                   )}
 
                   <Button className="w-full mt-3" variant="outline" onClick={handleWhatsApp}>
@@ -712,6 +905,92 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
                   Submit Review
                 </Button>
               </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Price Issue Modal */}
+      {showPriceIssueModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowPriceIssueModal(false)}>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-8 w-full max-w-lg border border-border/50 shadow-xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-2xl font-bold mb-2">Report Price Issue</h2>
+            <p className="text-muted-foreground mb-6">Update the actual prices you found at the market. The requester will review and approve.</p>
+            <div className="space-y-4">
+              {priceIssueItems.map((item, index) => (
+                <div key={index} className="p-4 bg-muted/50 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium">{item.name}</p>
+                    <p className="text-sm text-muted-foreground">Budget: ₦{item.maxBudget.toLocaleString()}</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <Label className="text-xs">Actual Price (₦)</Label>
+                      <Input
+                        type="number"
+                        value={item.actualPrice}
+                        onChange={(e) => {
+                          const newItems = [...priceIssueItems];
+                          newItems[index].actualPrice = parseInt(e.target.value) || 0;
+                          setPriceIssueItems(newItems);
+                        }}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Label className="text-xs">Note (optional)</Label>
+                      <Input
+                        value={item.note}
+                        onChange={(e) => {
+                          const newItems = [...priceIssueItems];
+                          newItems[index].note = e.target.value;
+                          setPriceIssueItems(newItems);
+                        }}
+                        placeholder="e.g., sold out"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="p-4 bg-orange-500/10 rounded-lg">
+                <p className="text-sm font-medium">
+                  New Total: ₦{priceIssueItems.reduce((sum, item) => sum + item.actualPrice, 0).toLocaleString()}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Original: ₦{items.reduce((sum, item) => sum + item.maxBudget, 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setShowPriceIssueModal(false)}>Cancel</Button>
+                <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={handlePriceIssue} disabled={submittingPriceIssue}>
+                  {submittingPriceIssue && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Submit Price Update
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Cancel Errand Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowCancelModal(false)}>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-8 w-full max-w-md border border-border/50 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-2xl font-bold mb-2">Cancel Errand</h2>
+            <p className="text-muted-foreground mb-6">Are you sure you want to cancel this errand? This action cannot be undone.</p>
+            {errand.paymentStatus === "PAID" && (
+              <div className="p-4 bg-blue-500/10 rounded-lg mb-4">
+                <p className="text-sm font-medium text-blue-600">Refund Notice</p>
+                <p className="text-sm text-muted-foreground">Since this errand was funded, a refund will be processed to your original payment method.</p>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowCancelModal(false)}>Keep Errand</Button>
+              <Button variant="destructive" className="flex-1" onClick={handleCancelErrand} disabled={cancellingErrand}>
+                {cancellingErrand && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Yes, Cancel
+              </Button>
             </div>
           </motion.div>
         </div>

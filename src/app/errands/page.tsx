@@ -13,10 +13,11 @@ import {
   MapPin,
   Clock,
   Star,
-  ShoppingBag,
+  ArrowLeft,
   ArrowRight,
-  Loader2,
+  ShoppingBag,
   Check,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -50,8 +51,10 @@ const statusColors: Record<string, string> = {
   ACCEPTED: "bg-secondary text-secondary-foreground",
   FUNDED: "bg-primary text-primary-foreground",
   SHOPPING: "bg-blue-500 text-white",
+  PRICE_REVIEW: "bg-orange-500 text-white",
   DELIVERED: "bg-purple-500 text-white",
   COMPLETED: "bg-muted text-muted-foreground",
+  CANCELLED: "bg-red-500 text-white",
 };
 
 const statusLabels: Record<string, string> = {
@@ -59,8 +62,10 @@ const statusLabels: Record<string, string> = {
   ACCEPTED: "Accepted",
   FUNDED: "Funded",
   SHOPPING: "Shopping",
+  PRICE_REVIEW: "Price Review",
   DELIVERED: "Delivered",
   COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
 };
 
 function formatTimeAgo(dateString: string): string {
@@ -158,6 +163,9 @@ export default function ErrandsPage() {
     <div className="min-h-screen bg-background">
       <div className="bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Link href="/dashboard" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4">
+            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+          </Link>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold mb-4">Browse Errands</h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">

@@ -48,7 +48,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const { id } = await params;
     const body = await request.json();
-    const { status, shopperId, paymentRef: newPaymentRef } = body;
+    const { status, shopperId, paymentRef: newPaymentRef, action } = body;
 
     const errand = await prisma.errand.findUnique({ where: { id } });
     if (!errand) {
@@ -70,6 +70,34 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
       updateData.shopperId = shopperId;
       updateData.status = "ACCEPTED";
+    }
+
+    // Handle price update approval/rejection
+    if (action === "APPROVE_PRICE") {
+      if (errand.requesterId !== userId) {
+        return NextResponse.json({ error: "Only the requester can approve price changes" }, { status: 403 });
+      }
+      if (errand.status !== "PRICE_REVIEW") {
+        return NextResponse.json({ error: "Errand is not in price review" }, { status: 400 });
+      }
+      // Update items and budget if provided
+      if (body.items) {
+        updateData.items = body.items;
+      }
+      if (body.budget !== undefined) {
+        updateData.budget = body.budget;
+      }
+      updateData.status = "SHOPPING";
+    }
+
+    if (action === "REJECT_PRICE") {
+      if (errand.requesterId !== userId) {
+        return NextResponse.json({ error: "Only the requester can reject price changes" }, { status: 403 });
+      }
+      if (errand.status !== "PRICE_REVIEW") {
+        return NextResponse.json({ error: "Errand is not in price review" }, { status: 400 });
+      }
+      updateData.status = "SHOPPING";
     }
 
     if (status) {
@@ -98,6 +126,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           return NextResponse.json({ error: "Must be shopping before marking delivered" }, { status: 400 });
         }
       }
+      // Shopper: SHOPPING → PRICE_REVIEW (report price issue)
+      if (status === "PRICE_REVIEW") {
+        if (errand.shopperId !== userId) {
+          return NextResponse.json({ error: "Only the assigned shopper can report price issues" }, { status: 403 });
+        }
+        if (errand.status !== "SHOPPING") {
+          return NextResponse.json({ error: "Must be shopping to report price issues" }, { status: 400 });
+        }
+      }
       // Requester: DELIVERED → COMPLETED
       if (status === "COMPLETED") {
         if (errand.requesterId !== userId) {
@@ -105,6 +142,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         }
         if (errand.status !== "DELIVERED") {
           return NextResponse.json({ error: "Errand must be delivered before confirming" }, { status: 400 });
+        }
+      }
+      // Requester: Cancel errand (OPEN or ACCEPTED or FUNDED)
+      if (status === "CANCELLED") {
+        if (errand.requesterId !== userId) {
+          return NextResponse.json({ error: "Only the requester can cancel an errand" }, { status: 403 });
+        }
+        if (!["OPEN", "ACCEPTED", "FUNDED"].includes(errand.status)) {
+          return NextResponse.json({ error: "Cannot cancel errand in current status" }, { status: 400 });
         }
       }
       updateData.status = status;
@@ -155,6 +201,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         data: {
           walletBalance: { increment: shopperPayout },
           totalEarned: { increment: shopperPayout },
+        },
+      });
+    }
+
+    // When cancelled and was funded: create refund record
+    if (status === "CANCELLED" && errand.paymentStatus === "PAID") {
+      await prisma.transaction.create({
+        data: {
+          errandId: id,
+          amount: errand.budget + errand.reward,
+          platformFee: 0,
+          shopperPayout: 0,
+          monnifyRef: errand.paymentRef,
+          status: "REFUNDED",
         },
       });
     }
