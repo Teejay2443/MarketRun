@@ -21,6 +21,8 @@ interface AuthContextType {
   isLoading: boolean;
   signup: (name: string, email: string, password: string, estate: string) => Promise<{ success: boolean; error?: string }>;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  sendVerification: (email: string, purpose?: "signup" | "login") => Promise<{ success: boolean; error?: string; code?: string }>;
+  verifyEmail: (email: string, code: string, purpose?: "signup" | "login") => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -79,6 +81,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
+  const sendVerification = async (email: string, purpose: "signup" | "login" = "signup") => {
+    const res = await fetch("/api/auth/send-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, purpose }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { success: false, error: data.error };
+    }
+
+    return { success: true, code: data.code };
+  };
+
+  const verifyEmail = async (email: string, code: string, purpose: "signup" | "login" = "signup") => {
+    const res = await fetch("/api/auth/verify-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code, purpose }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { success: false, error: data.error };
+    }
+
+    return { success: true };
+  };
+
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
@@ -89,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signup, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, signup, login, sendVerification, verifyEmail, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
