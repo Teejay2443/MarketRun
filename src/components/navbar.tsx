@@ -58,7 +58,8 @@ export function Navbar() {
     return () => clearTimeout(timer);
   }, [codeCooldown]);
 
-  const handleSendCode = async () => {
+  const handleSendCode = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!authForm.email) {
       setAuthError("Please enter your email first");
       return;
