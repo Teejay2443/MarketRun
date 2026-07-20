@@ -54,6 +54,7 @@ interface Errand {
   requesterId: string;
   shopperId: string | null;
   paymentRef?: string;
+  paymentStatus?: string;
 }
 
 const statusSteps = [
