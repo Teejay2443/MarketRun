@@ -584,9 +584,29 @@ export default function DashboardPage() {
           {/* Content */}
           <div className="p-4 lg:p-8 pb-24 md:pb-8">
             {loading ? (
-              <div className="text-center py-16">
-                <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-                <p className="text-muted-foreground">Loading...</p>
+              <div className="space-y-4 animate-pulse">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="border border-border/50 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-11 h-11 bg-muted rounded-xl shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 bg-muted rounded w-1/3" />
+                          <div className="h-4 bg-muted rounded w-16" />
+                        </div>
+                        <div className="h-3 bg-muted rounded w-2/3" />
+                        <div className="flex gap-3">
+                          <div className="h-3 bg-muted rounded w-20" />
+                          <div className="h-3 bg-muted rounded w-16" />
+                        </div>
+                      </div>
+                      <div className="text-right space-y-1">
+                        <div className="h-3 bg-muted rounded w-12 ml-auto" />
+                        <div className="h-5 bg-muted rounded w-16 ml-auto" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <>
@@ -1011,15 +1031,23 @@ function ErrandCard({ errand, index, role }: { errand: Errand; index: number; ro
   const iconColor = role === "requester" ? "text-primary" : "text-secondary";
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}>
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, type: "spring", stiffness: 260, damping: 20 }}
+      whileTap={{ scale: 0.98 }}
+    >
       <Link href={`/errands/${errand.id}`}>
-        <Card className="border-border/50 card-hover cursor-pointer">
-          <CardContent className="p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-start gap-4">
-                <div className={`w-11 h-11 ${bgColor} rounded-xl flex items-center justify-center shrink-0`}>
+        <Card className="border-border/50 card-hover cursor-pointer active:shadow-md transition-shadow duration-150">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <motion.div
+                  whileTap={{ scale: 0.9, rotate: -5 }}
+                  className={`w-11 h-11 ${bgColor} rounded-xl flex items-center justify-center shrink-0`}
+                >
                   <ShoppingBag className={`w-5 h-5 ${iconColor}`} />
-                </div>
+                </motion.div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-sm truncate">{errand.title}</h3>
@@ -1032,7 +1060,7 @@ function ErrandCard({ errand, index, role }: { errand: Errand; index: number; ro
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-4 sm:shrink-0">
+              <div className="flex items-center gap-3 sm:gap-4 sm:shrink-0">
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">{role === "shopper" ? "Earning" : "Reward"}</p>
                   <p className="font-bold text-primary">₦{errand.reward.toLocaleString()}</p>
