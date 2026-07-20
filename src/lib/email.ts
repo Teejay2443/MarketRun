@@ -1,5 +1,14 @@
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL || "MarketRun <noreply@marketrun.app>";
+import nodemailer from "nodemailer";
+
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.GOOGLE_EMAIL,
+    pass: process.env.GOOGLE_APP_PASSWORD,
+  },
+});
 
 export async function sendVerificationEmail(email: string, code: string, purpose: "signup" | "login"): Promise<boolean> {
   const subject = purpose === "signup"
@@ -10,7 +19,7 @@ export async function sendVerificationEmail(email: string, code: string, purpose
     <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
       <div style="text-align: center; margin-bottom: 24px;">
         <div style="width: 48px; height: 48px; background: #0ea5e9; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;">
-          <span style="color: white; font-size: 24px;">🛒</span>
+          <span style="color: white; font-size: 24px;">&#128722;</span>
         </div>
       </div>
       <h1 style="text-align: center; font-size: 24px; margin-bottom: 8px;">
@@ -32,32 +41,19 @@ export async function sendVerificationEmail(email: string, code: string, purpose
     </div>
   `;
 
-  // Try Resend API first
-  if (RESEND_API_KEY) {
+  // Try Gmail SMTP first
+  if (process.env.GOOGLE_EMAIL && process.env.GOOGLE_APP_PASSWORD) {
     try {
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: FROM_EMAIL,
-          to: email,
-          subject,
-          html,
-        }),
+      await transporter.sendMail({
+        from: `"MarketRun" <${process.env.GOOGLE_EMAIL}>`,
+        to: email,
+        subject,
+        html,
       });
-
-      if (response.ok) {
-        console.log(`Verification email sent to ${email}`);
-        return true;
-      } else {
-        const error = await response.text();
-        console.error("Resend API error:", error);
-      }
+      console.log(`Verification email sent to ${email}`);
+      return true;
     } catch (error) {
-      console.error("Failed to send email via Resend:", error);
+      console.error("Gmail SMTP error:", error);
     }
   }
 
