@@ -31,8 +31,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  errandsAsRequester Errand[] @relation("RequesterErrands")
-  errandsAsShopper   Errand[] @relation("ShopperErrands")
+  errandsAsRequester Errand[]   @relation("RequesterErrands")
+  errandsAsShopper   Errand[]   @relation("ShopperErrands")
+  messagesSent       Message[]  @relation("SentMessages")
+  reviewsGiven       Review[]   @relation("GivenReviews")
+  reviewsReceived    Review[]   @relation("ReceivedReviews")
 }
 
 model Errand {
@@ -64,6 +67,8 @@ model Errand {
   shopper   User?   @relation("ShopperErrands", fields: [shopperId], references: [id])
 
   transactions Transaction[]
+  messages     Message[]
+  review       Review?
 }
 
 model Transaction {
@@ -97,4 +102,29 @@ model AuditLog {
   userId    String?
   details   String?
   createdAt DateTime @default(now())
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  errandId  String
+  senderId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  errand Errand @relation(fields: [errandId], references: [id])
+  sender User   @relation("SentMessages", fields: [senderId], references: [id])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  errandId   String   @unique
+  reviewerId String
+  revieweeId String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  errand   Errand @relation(fields: [errandId], references: [id])
+  reviewer User   @relation("GivenReviews", fields: [reviewerId], references: [id])
+  reviewee User   @relation("ReceivedReviews", fields: [revieweeId], references: [id])
 }

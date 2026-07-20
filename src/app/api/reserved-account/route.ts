@@ -83,9 +83,10 @@ export async function POST(request: NextRequest) {
       bankName: account.bankName,
       accountReference: account.accountReference,
     });
-  } catch (error) {
-    console.error("Reserved account error:", error);
-    return NextResponse.json({ error: "Failed to create reserved account" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to create reserved account";
+    console.error("Reserved account error:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -22,6 +22,8 @@ import {
   Share2,
   Loader2,
   AlertCircle,
+  MessageSquare,
+  Send,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -83,10 +85,28 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
   const [refundLoading, setRefundLoading] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundReason, setRefundReason] = useState("");
+  const [messages, setMessages] = useState<Array<{ id: string; content: string; senderId: string; sender: { id: string; name: string }; createdAt: string }>>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [existingReview, setExistingReview] = useState<{ rating: number; comment: string | null; reviewer: { name: string } } | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchErrand();
   }, [id]);
+
+  useEffect(() => {
+    if (showChat && errand) {
+      fetchMessages();
+      const interval = setInterval(fetchMessages, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [showChat, errand]);
 
   const fetchErrand = async () => {
     setLoading(true);
@@ -95,11 +115,90 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
       if (res.ok) {
         const data = await res.json();
         setErrand(data);
+        if (data.status === "COMPLETED" && user && data.requesterId === user.id) {
+          const reviewRes = await fetch(`/api/reviews?errandId=${data.id}`, { credentials: "include" });
+          if (reviewRes.ok) {
+            const reviewData = await reviewRes.json();
+            if (reviewData.reviews && reviewData.reviews.length > 0) {
+              setExistingReview(reviewData.reviews[0]);
+            }
+          }
+        }
       }
     } catch {
       toast.error("Failed to load errand");
     }
     setLoading(false);
+  };
+
+  const fetchMessages = async () => {
+    if (!errand) return;
+    try {
+      const res = await fetch(`/api/messages?errandId=${errand.id}`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data.messages || []);
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      }
+    } catch {}
+  };
+
+  const sendMessage = async () => {
+    if (!errand || !newMessage.trim()) return;
+    setSendingMessage(true);
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ errandId: errand.id, content: newMessage }),
+      });
+      if (res.ok) {
+        setNewMessage("");
+        fetchMessages();
+      }
+    } catch {
+      toast.error("Failed to send");
+    }
+    setSendingMessage(false);
+  };
+
+  const fetchReview = async () => {
+    if (!errand) return;
+    try {
+      const res = await fetch(`/api/reviews?errandId=${errand.id}`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.reviews && data.reviews.length > 0) {
+          setExistingReview(data.reviews[0]);
+        }
+      }
+    } catch {}
+  };
+
+  const submitReview = async () => {
+    if (!errand) return;
+    setSubmittingReview(true);
+    try {
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ errandId: errand.id, rating: reviewRating, comment: reviewComment }),
+      });
+      if (res.ok) {
+        toast.success("Review submitted!");
+        setShowReviewModal(false);
+        fetchReview();
+        fetchErrand();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to submit review");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    }
+    setSubmittingReview(false);
   };
 
   const handleFund = async () => {
@@ -359,6 +458,54 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
                 </CardContent>
               </Card>
             </motion.div>
+
+            {(isRequester || isShopper) && errand.status !== "OPEN" && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                <Card className="border-border/50">
+                  <CardContent className="p-6">
+                    <button onClick={() => setShowChat(!showChat)} className="flex items-center gap-3 w-full text-left">
+                      <MessageSquare className="w-5 h-5 text-primary" />
+                      <h2 className="font-semibold text-lg flex-1">Conversation</h2>
+                      <span className="text-sm text-muted-foreground">{showChat ? "Hide" : "Show"}</span>
+                    </button>
+                    {showChat && (
+                      <div className="mt-4">
+                        <div className="h-80 overflow-y-auto border border-border rounded-xl p-4 mb-4 bg-muted/20 space-y-3">
+                          {messages.length === 0 && (
+                            <p className="text-center text-muted-foreground text-sm py-8">No messages yet. Say hello!</p>
+                          )}
+                          {messages.map((msg) => (
+                            <div key={msg.id} className={`flex ${msg.senderId === user?.id ? "justify-end" : "justify-start"}`}>
+                              <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${msg.senderId === user?.id ? "bg-primary text-primary-foreground" : "bg-card border border-border"}`}>
+                                <p className="text-sm font-medium mb-0.5">{msg.sender.name}</p>
+                                <p className="text-sm">{msg.content}</p>
+                                <p className={`text-xs mt-1 ${msg.senderId === user?.id ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                          <div ref={messagesEndRef} />
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                            placeholder="Type a message..."
+                            className="flex-1 px-4 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                          <Button size="sm" onClick={sendMessage} disabled={sendingMessage || !newMessage.trim()}>
+                            <Send className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -418,6 +565,24 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
                     <div className="text-center py-4">
                       <CheckCircle2 className="w-12 h-12 text-accent mx-auto mb-2" />
                       <p className="font-semibold text-accent">Completed!</p>
+                    </div>
+                  )}
+
+                  {isRequester && errand.status === "COMPLETED" && !existingReview && (
+                    <Button className="w-full" size="lg" onClick={() => setShowReviewModal(true)}>
+                      <Star className="w-5 h-5 mr-2" /> Rate Shopper
+                    </Button>
+                  )}
+
+                  {existingReview && (
+                    <div className="p-4 bg-muted/50 rounded-xl mt-2">
+                      <p className="text-sm font-medium mb-1">Your Review</p>
+                      <div className="flex items-center gap-1 mb-1">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star key={s} className={`w-4 h-4 ${s <= existingReview.rating ? "fill-secondary text-secondary" : "text-muted-foreground"}`} />
+                        ))}
+                      </div>
+                      {existingReview.comment && <p className="text-sm text-muted-foreground">{existingReview.comment}</p>}
                     </div>
                   )}
 
@@ -504,6 +669,45 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
                 <Button variant="destructive" className="flex-1" onClick={handleRefund} disabled={refundLoading || !refundReason}>
                   {refundLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Submit Refund
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowReviewModal(false)}>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-8 w-full max-w-md border border-border/50 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-2xl font-bold mb-2">Rate Your Shopper</h2>
+            <p className="text-muted-foreground mb-6">How was your experience with {errand.shopper?.name || "your shopper"}?</p>
+            <div className="space-y-4">
+              <div className="flex justify-center gap-2">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button key={s} onClick={() => setReviewRating(s)} className="p-1">
+                    <Star className={`w-10 h-10 transition-colors ${s <= reviewRating ? "fill-secondary text-secondary" : "text-muted-foreground hover:text-secondary/50"}`} />
+                  </button>
+                ))}
+              </div>
+              <p className="text-center text-sm text-muted-foreground">
+                {reviewRating === 1 && "Poor"}{reviewRating === 2 && "Fair"}{reviewRating === 3 && "Good"}{reviewRating === 4 && "Very Good"}{reviewRating === 5 && "Excellent"}
+              </p>
+              <div>
+                <Label>Comment (optional)</Label>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Tell others about your experience..."
+                  rows={3}
+                  className="w-full mt-1 px-4 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setShowReviewModal(false)}>Cancel</Button>
+                <Button className="flex-1 bg-secondary hover:bg-secondary/90 text-secondary-foreground" onClick={submitReview} disabled={submittingReview}>
+                  {submittingReview && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Submit Review
                 </Button>
               </div>
             </div>

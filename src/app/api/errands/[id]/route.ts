@@ -123,6 +123,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       },
     });
 
+    // Log audit for all status changes
+    await prisma.auditLog.create({
+      data: {
+        action: `ERRAND_${updateData.status || "UPDATED"}`,
+        entityType: "Errand",
+        entityId: id,
+        userId,
+        details: JSON.stringify({ from: errand.status, to: updateData.status || "unknown" }),
+      },
+    });
+
     // When completed: credit wallet + create transaction
     if (status === "COMPLETED" && errand.shopperId) {
       const platformFee = Math.round(errand.reward * 0.1);

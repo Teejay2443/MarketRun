@@ -125,6 +125,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    await prisma.auditLog.create({
+      data: {
+        action: "ERRAND_CREATED",
+        entityType: "Errand",
+        entityId: errand.id,
+        userId,
+        details: JSON.stringify({ title, market, budget, reward }),
+      },
+    });
+
     return NextResponse.json(errand);
   } catch (error) {
     console.error("POST errand error:", error);
