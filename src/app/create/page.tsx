@@ -388,7 +388,7 @@ function CreateErrandPageContent() {
                             <Button variant="ghost" size="sm" onClick={() => removeItem(index)} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div><Label>Name *</Label><Input placeholder="e.g., Tomatoes" value={item.name} onChange={(e) => updateItem(index, "name", e.target.value)} className="mt-1" /></div>
                           <div><Label>Quantity *</Label><Input placeholder="e.g., 2kg" value={item.quantity} onChange={(e) => updateItem(index, "quantity", e.target.value)} className="mt-1" /></div>
                           <div><Label>Preferred Brand</Label><Input placeholder="e.g., Dangote" value={item.brand} onChange={(e) => updateItem(index, "brand", e.target.value)} className="mt-1" /></div>
@@ -466,7 +466,7 @@ function CreateErrandPageContent() {
           )}
         </AnimatePresence>
 
-        <div className="flex items-center justify-between mt-6">
+        <div className="flex items-center justify-between mt-6 pb-24 md:pb-0">
           <Button variant="outline" onClick={() => setCurrentStep((prev) => Math.max(1, prev - 1))} disabled={currentStep === 1}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </Button>

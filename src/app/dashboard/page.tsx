@@ -533,7 +533,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Content */}
-          <div className="p-4 lg:p-8">
+          <div className="p-4 lg:p-8 pb-24 md:pb-8">
             {loading ? (
               <div className="text-center py-16">
                 <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
@@ -879,7 +879,7 @@ export default function DashboardPage() {
       {/* Withdraw Modal */}
       {showWithdraw && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowWithdraw(false)}>
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-8 w-full max-w-md border border-border/50 shadow-xl" onClick={(e) => e.stopPropagation()}>
+           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-6 sm:p-8 w-full max-w-md border border-border/50 shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-2xl font-bold mb-2">Withdraw Funds</h2>
             <p className="text-muted-foreground mb-6">Available: ₦{(wallet?.walletBalance || 0).toLocaleString()}</p>
             <div className="space-y-4">

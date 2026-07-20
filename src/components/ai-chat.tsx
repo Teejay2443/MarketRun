@@ -163,7 +163,7 @@ export function AIChat({ open, onClose }: AIChatProps) {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-card rounded-2xl w-full max-w-lg h-[85vh] flex flex-col border border-border/50 shadow-xl overflow-hidden"
+            className="bg-card rounded-2xl w-full max-w-lg h-[90dvh] sm:h-[85vh] flex flex-col border border-border/50 shadow-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

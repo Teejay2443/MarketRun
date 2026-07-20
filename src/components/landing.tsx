@@ -126,7 +126,7 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-4xl md:text-6xl font-bold tracking-tight mb-6"
+            className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-6"
           >
             Someone is already at the{" "}
             <span className="gradient-text">market</span>.
@@ -450,7 +450,7 @@ export function CTASection() {
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="relative bg-primary rounded-3xl p-12 md:p-16 text-center overflow-hidden"
+          className="relative bg-primary rounded-3xl p-8 sm:p-12 md:p-16 text-center overflow-hidden"
         >
           <div className="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full translate-x-1/3 translate-y-1/3" />

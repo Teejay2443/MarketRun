@@ -293,7 +293,7 @@ export function Navbar() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-card rounded-2xl p-8 w-full max-w-md border border-border/50 shadow-xl"
+              className="bg-card rounded-2xl p-6 sm:p-8 w-full max-w-md border border-border/50 shadow-xl max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center mb-6">

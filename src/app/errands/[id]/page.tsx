@@ -536,7 +536,7 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
               <Card className="border-border/50">
                 <CardContent className="p-6">
                   <h2 className="font-semibold text-lg mb-4">Location Details</h2>
-                  <div className="grid grid-cols-2 gap-4">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex items-start gap-3">
                       <MapPin className="w-5 h-5 text-primary mt-0.5" />
                       <div>
@@ -845,7 +845,7 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
       {/* Refund Modal */}
       {showRefundModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowRefundModal(false)}>
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-8 w-full max-w-md border border-border/50 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-6 sm:p-8 w-full max-w-md border border-border/50 shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-2xl font-bold mb-2">Request Refund</h2>
             <p className="text-muted-foreground mb-6">Refund amount: ₦{(errand.budget + errand.reward).toLocaleString()}</p>
             <div className="space-y-4">
@@ -875,7 +875,7 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
       {/* Review Modal */}
       {showReviewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowReviewModal(false)}>
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-8 w-full max-w-md border border-border/50 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-6 sm:p-8 w-full max-w-md border border-border/50 shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-2xl font-bold mb-2">Rate Your Shopper</h2>
             <p className="text-muted-foreground mb-6">How was your experience with {errand.shopper?.name || "your shopper"}?</p>
             <div className="space-y-4">
@@ -914,7 +914,7 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
       {/* Price Issue Modal */}
       {showPriceIssueModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowPriceIssueModal(false)}>
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-8 w-full max-w-lg border border-border/50 shadow-xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-6 sm:p-8 w-full max-w-md border border-border/50 shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-2xl font-bold mb-2">Report Price Issue</h2>
             <p className="text-muted-foreground mb-6">Update the actual prices you found at the market. The requester will review and approve.</p>
             <div className="space-y-4">
@@ -924,7 +924,7 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
                     <p className="font-medium">{item.name}</p>
                     <p className="text-sm text-muted-foreground">Budget: ₦{item.maxBudget.toLocaleString()}</p>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <div className="flex-1">
                       <Label className="text-xs">Actual Price (₦)</Label>
                       <Input
@@ -977,7 +977,7 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
       {/* Cancel Errand Modal */}
       {showCancelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowCancelModal(false)}>
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-8 w-full max-w-md border border-border/50 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card rounded-2xl p-6 sm:p-8 w-full max-w-md border border-border/50 shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-2xl font-bold mb-2">Cancel Errand</h2>
             <p className="text-muted-foreground mb-6">Are you sure you want to cancel this errand? This action cannot be undone.</p>
             {errand.paymentStatus === "PAID" && (
