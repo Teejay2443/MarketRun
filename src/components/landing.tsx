@@ -17,6 +17,10 @@ import {
   TrendingUp,
   Zap,
   Heart,
+  Sparkles,
+  Brain,
+  AlertTriangle,
+  BarChart3,
 } from "lucide-react";
 
 const stats = [
@@ -274,6 +278,81 @@ export function FeaturesSection() {
 
         <div className="grid md:grid-cols-3 gap-8">
           {features.map((feature, index) => (
+            <motion.div
+              key={feature.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              viewport={{ once: true }}
+              className="bg-card rounded-2xl p-8 border border-border/50 card-hover"
+            >
+              <div className="w-14 h-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-6">
+                <feature.icon className="w-7 h-7" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
+              <p className="text-muted-foreground">{feature.description}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function AISection() {
+  const aiFeatures = [
+    {
+      icon: Brain,
+      title: "Smart Item Suggestions",
+      description: "AI analyzes your errand title and market to suggest relevant items with estimated prices. No more forgetting items at the market.",
+    },
+    {
+      icon: BarChart3,
+      title: "Market Price Comparison",
+      description: "Compare prices across Lagos markets. Know where to get the best deals before your shopper heads out.",
+    },
+    {
+      icon: AlertTriangle,
+      title: "Fraud Detection",
+      description: "Smart algorithms flag unusual patterns — high budgets, repeat refunds, suspicious activity. Keeping the community safe.",
+    },
+  ];
+
+  return (
+    <section className="py-20 bg-muted/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6"
+          >
+            <Sparkles className="w-4 h-4" />
+            Powered by AI
+          </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl md:text-4xl font-bold mb-4"
+          >
+            Intelligent Shopping
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-muted-foreground max-w-2xl mx-auto"
+          >
+            Our AI engine understands Nigerian markets. It suggests items,
+            compares prices, and keeps the platform safe.
+          </motion.p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          {aiFeatures.map((feature, index) => (
             <motion.div
               key={feature.title}
               initial={{ opacity: 0, y: 20 }}

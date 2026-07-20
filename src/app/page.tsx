@@ -5,6 +5,7 @@ import {
   StatsSection,
   HowItWorksSection,
   FeaturesSection,
+  AISection,
   TestimonialsSection,
   CTASection,
 } from "@/components/landing";
@@ -18,6 +19,7 @@ export default function Home() {
         <StatsSection />
         <HowItWorksSection />
         <FeaturesSection />
+        <AISection />
         <TestimonialsSection />
         <CTASection />
       </main>

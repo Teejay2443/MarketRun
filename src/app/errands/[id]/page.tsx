@@ -145,20 +145,22 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
 
   const sendMessage = async () => {
     if (!errand || !newMessage.trim()) return;
+    const content = newMessage.trim();
+    setNewMessage("");
     setSendingMessage(true);
     try {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ errandId: errand.id, content: newMessage }),
+        body: JSON.stringify({ errandId: errand.id, content }),
       });
       if (res.ok) {
-        setNewMessage("");
         fetchMessages();
       }
     } catch {
       toast.error("Failed to send");
+      setNewMessage(content);
     }
     setSendingMessage(false);
   };

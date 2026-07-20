@@ -27,6 +27,8 @@ import {
   MapPin,
   CreditCard,
   CheckCircle2,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 
 interface ShoppingItem {
@@ -59,6 +61,9 @@ export default function CreateErrandPage() {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<Array<{ name: string; quantity: string; maxBudget: number; confidence: number; category: string }>>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMessage, setAiMessage] = useState("");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -99,6 +104,50 @@ export default function CreateErrandPage() {
 
   const calculateTotal = () => {
     return formData.items.reduce((sum, item) => sum + (item.maxBudget || 0), 0);
+  };
+
+  const fetchSuggestions = async () => {
+    if (!formData.title && !formData.market) return;
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: formData.title,
+          market: formData.market,
+          existingItems: formData.items,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiSuggestions(data.suggestions || []);
+        setAiMessage(data.message || "");
+      }
+    } catch {}
+    setAiLoading(false);
+  };
+
+  const addSuggestion = (suggestion: { name: string; quantity: string; maxBudget: number }) => {
+    setFormData((prev) => ({
+      ...prev,
+      items: [...prev.items, { name: suggestion.name, quantity: suggestion.quantity, brand: "", maxBudget: suggestion.maxBudget }],
+    }));
+    setAiSuggestions((prev) => prev.filter((s) => s.name !== suggestion.name));
+  };
+
+  const addAllSuggestions = () => {
+    const newItems = aiSuggestions.map((s) => ({
+      name: s.name,
+      quantity: s.quantity,
+      brand: "",
+      maxBudget: s.maxBudget,
+    }));
+    setFormData((prev) => ({
+      ...prev,
+      items: [...prev.items, ...newItems],
+    }));
+    setAiSuggestions([]);
   };
 
   const handleSubmit = async () => {
@@ -253,8 +302,41 @@ export default function CreateErrandPage() {
                 <CardContent className="p-6 space-y-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold">Shopping List</h2>
-                    <Button variant="outline" size="sm" onClick={addItem}><Plus className="w-4 h-4 mr-2" /> Add Item</Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={fetchSuggestions} disabled={aiLoading || (!formData.title && !formData.market)}>
+                        {aiLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                        AI Suggest
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={addItem}><Plus className="w-4 h-4 mr-2" /> Add Item</Button>
+                    </div>
                   </div>
+
+                  {aiSuggestions.length > 0 && (
+                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium text-primary">AI Suggestions</span>
+                        <span className="text-xs text-muted-foreground ml-auto">{aiMessage}</span>
+                      </div>
+                      <div className="space-y-2 mb-3">
+                        {aiSuggestions.map((s) => (
+                          <div key={s.name} className="flex items-center justify-between p-2 bg-card rounded-lg border border-border/50">
+                            <div className="flex-1">
+                              <span className="font-medium text-sm">{s.name}</span>
+                              <span className="text-xs text-muted-foreground ml-2">{s.quantity}</span>
+                              <span className="text-xs text-primary ml-2">~₦{s.maxBudget.toLocaleString()}</span>
+                            </div>
+                            <Button size="sm" variant="ghost" onClick={() => addSuggestion(s)} className="h-7 px-2">
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      <Button size="sm" onClick={addAllSuggestions} className="w-full bg-primary/10 text-primary hover:bg-primary/20">
+                        <Plus className="w-4 h-4 mr-2" /> Add All Suggestions
+                      </Button>
+                    </motion.div>
+                  )}
                   <div className="space-y-4">
                     {formData.items.map((item, index) => (
                       <div key={index} className="p-4 bg-muted/50 rounded-lg space-y-4">
