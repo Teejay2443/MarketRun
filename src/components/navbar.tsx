@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Menu, X, ShoppingBag, Plus, Home, Search, User, Mail, Lock, UserPlus, LogOut, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Menu, X, ShoppingBag, Plus, Home, Search, User, Mail, Lock, UserPlus, LogOut, ShieldCheck, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,7 @@ export function Navbar() {
   const [codeSent, setCodeSent] = useState(false);
   const [codeCooldown, setCodeCooldown] = useState(0);
   const [devCode, setDevCode] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -163,6 +164,7 @@ export function Navbar() {
     setCodeSent(false);
     setDevCode("");
     setAuthError("");
+    setShowPassword(false);
   };
 
   return (
@@ -342,12 +344,19 @@ export function Navbar() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="auth-password"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         placeholder="Enter your password"
-                        className="pl-10"
+                        className="pl-10 pr-10"
                         value={authForm.password}
                         onChange={(e) => setAuthForm((p) => ({ ...p, password: e.target.value }))}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                   </div>
 
@@ -412,12 +421,19 @@ export function Navbar() {
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                           <Input
                             id="auth-password"
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             placeholder="Create a password"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             value={authForm.password}
                             onChange={(e) => setAuthForm((p) => ({ ...p, password: e.target.value }))}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
                         </div>
                       </div>
 
