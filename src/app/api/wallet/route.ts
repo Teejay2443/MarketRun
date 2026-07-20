@@ -22,10 +22,13 @@ export async function GET(request: NextRequest) {
 
     const transactions = await prisma.transaction.findMany({
       where: {
-        errand: { shopperId: userId },
+        OR: [
+          { errand: { shopperId: userId } },
+          { errand: { requesterId: userId } },
+        ],
       },
       include: {
-        errand: { select: { id: true, title: true, market: true, createdAt: true } },
+        errand: { select: { id: true, title: true, market: true, createdAt: true, requesterId: true, shopperId: true } },
       },
       orderBy: { createdAt: "desc" },
     });
