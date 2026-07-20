@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -57,7 +57,7 @@ const steps = [
   { id: 4, title: "Payment", icon: CreditCard },
 ];
 
-export default function CreateErrandPage() {
+function CreateErrandPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -486,5 +486,13 @@ export default function CreateErrandPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CreateErrandPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /></div>}>
+      <CreateErrandPageContent />
+    </Suspense>
   );
 }
