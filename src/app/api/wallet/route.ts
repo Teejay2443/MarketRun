@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/auth-utils";
-import { disburseFunds } from "@/lib/monnify";
+import { disburseFunds, verifyBankAccount } from "@/lib/monnify";
 
 // GET /api/wallet - Get wallet balance + transactions
 export async function GET(request: NextRequest) {
@@ -71,6 +71,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Bank code, account number, and account name are required" }, { status: 400 });
     }
 
+    // Verify account with Monnify to get the real account name
+    const verified = await verifyBankAccount({ bankCode, accountNumber });
+    if (!verified.verified || !verified.accountName) {
+      return NextResponse.json({ error: "Invalid bank account. Please check your bank and account number." }, { status: 400 });
+    }
+
+    // Use the Monnify-verified account name (not user input)
+    const verifiedName = verified.accountName;
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { walletBalance: true, name: true, email: true },
@@ -110,7 +119,7 @@ export async function POST(request: NextRequest) {
         amount,
         bankCode,
         accountNumber,
-        accountName,
+        accountName: verifiedName,
         narration: `MarketRun wallet withdrawal for ${user.name}`,
         reference: withdrawalRef,
       });
@@ -123,7 +132,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `Withdrawal of ₦${amount.toLocaleString()} initiated. Funds will be sent to ${accountName} within 24 hours.`,
+        message: `Withdrawal of ₦${amount.toLocaleString()} initiated. Funds will be sent to ${verifiedName} within 24 hours.`,
         newBalance: user.walletBalance - amount,
         reference: withdrawalRef,
       });

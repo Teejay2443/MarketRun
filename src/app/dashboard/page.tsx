@@ -125,9 +125,11 @@ export default function DashboardPage() {
   const [selectedMarket, setSelectedMarket] = useState("all");
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState(0);
-  const [bankName, setBankName] = useState("");
+  const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
+  const [verifiedAccountName, setVerifiedAccountName] = useState("");
+  const [verifyingAccount, setVerifyingAccount] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
 
   // Monnify features state
@@ -150,9 +152,25 @@ export default function DashboardPage() {
   const scrollPositionRef = useRef<number>(0);
   const [showAIChat, setShowAIChat] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [banks, setBanks] = useState<Array<{ name: string; code: string }>>([]);
+
+  const fetchBanks = async () => {
+    try {
+      const res = await fetch("/api/wallet/banks", { credentials: "include" });
+      const data = await res.json();
+      if (data.success && data.banks) {
+        setBanks(data.banks);
+      }
+    } catch {
+      // Banks will be empty, user can still type
+    }
+  };
 
   useEffect(() => {
-    if (user) fetchAll();
+    if (user) {
+      fetchAll();
+      fetchBanks();
+    }
   }, [user]);
 
   useEffect(() => {
@@ -236,8 +254,8 @@ export default function DashboardPage() {
   };
 
   const handleWithdraw = async () => {
-    if (!withdrawAmount || !bankName || !accountNumber || !accountName) {
-      toast.error("Please fill in all fields");
+    if (!withdrawAmount || !bankCode || !accountNumber || !verifiedAccountName) {
+      toast.error("Please fill in all fields and verify your account");
       return;
     }
     if (withdrawAmount > (wallet?.walletBalance || 0)) {
@@ -250,16 +268,17 @@ export default function DashboardPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ amount: withdrawAmount, bankName, accountNumber, accountName }),
+        body: JSON.stringify({ amount: withdrawAmount, bankCode, accountNumber, accountName: verifiedAccountName }),
       });
       const data = await res.json();
       if (data.success) {
         toast.success(data.message);
         setShowWithdraw(false);
         setWithdrawAmount(0);
-        setBankName("");
+        setBankCode("");
         setAccountNumber("");
         setAccountName("");
+        setVerifiedAccountName("");
         fetchAll();
       } else {
         toast.error(data.error || "Withdrawal failed");
@@ -269,6 +288,36 @@ export default function DashboardPage() {
     }
     setWithdrawing(false);
   };
+
+  const verifyAccount = async () => {
+    if (!bankCode || accountNumber.length !== 10) return;
+    setVerifyingAccount(true);
+    setVerifiedAccountName("");
+    try {
+      const res = await fetch("/api/wallet/verify-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ bankCode, accountNumber }),
+      });
+      const data = await res.json();
+      if (data.success && data.accountName) {
+        setVerifiedAccountName(data.accountName);
+      } else {
+        toast.error(data.error || "Account not found");
+      }
+    } catch {
+      toast.error("Failed to verify account");
+    }
+    setVerifyingAccount(false);
+  };
+
+  useEffect(() => {
+    if (bankCode && accountNumber.length === 10) {
+      const timeout = setTimeout(verifyAccount, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [bankCode, accountNumber]);
 
   // ============================================================
   // MONNIFY FEATURES
@@ -888,21 +937,37 @@ export default function DashboardPage() {
                 <Input type="number" placeholder="0" value={withdrawAmount || ""} onChange={(e) => setWithdrawAmount(parseInt(e.target.value) || 0)} className="mt-1" />
               </div>
               <div>
-                <Label>Bank Name</Label>
-                <Input placeholder="e.g., GTBank" value={bankName} onChange={(e) => setBankName(e.target.value)} className="mt-1" />
+                <Label>Bank</Label>
+                <select value={bankCode} onChange={(e) => { setBankCode(e.target.value); setVerifiedAccountName(""); }} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                  <option value="">Select your bank</option>
+                  {banks.map((b) => (
+                    <option key={b.code} value={b.code}>{b.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <Label>Account Number</Label>
-                <Input placeholder="0123456789" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className="mt-1" />
+                <Input placeholder="0123456789" maxLength={10} value={accountNumber} onChange={(e) => { setAccountNumber(e.target.value.replace(/\D/g, "")); setVerifiedAccountName(""); }} className="mt-1" />
               </div>
               <div>
                 <Label>Account Name</Label>
-                <Input placeholder="Kemi Adebanjo" value={accountName} onChange={(e) => setAccountName(e.target.value)} className="mt-1" />
+                {verifyingAccount ? (
+                  <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground border rounded-md px-3 py-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Verifying account...
+                  </div>
+                ) : verifiedAccountName ? (
+                  <div className="mt-1 border rounded-md px-3 py-2 bg-muted/50 text-sm font-medium">
+                    {verifiedAccountName}
+                  </div>
+                ) : (
+                  <Input placeholder="Enter bank and account number to verify" disabled className="mt-1 bg-muted/30" />
+                )}
               </div>
               <Separator />
               <div className="flex gap-3">
-                <Button variant="outline" className="flex-1" onClick={() => setShowWithdraw(false)}>Cancel</Button>
-                <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={handleWithdraw} disabled={withdrawing}>
+                <Button variant="outline" className="flex-1" onClick={() => { setShowWithdraw(false); setBankCode(""); setAccountNumber(""); setVerifiedAccountName(""); }}>Cancel</Button>
+                <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={handleWithdraw} disabled={withdrawing || !verifiedAccountName}>
                   {withdrawing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Withdraw
                 </Button>

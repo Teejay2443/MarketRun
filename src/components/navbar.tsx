@@ -22,10 +22,10 @@ type SignupStep = "details" | "verify";
 
 export function Navbar() {
   const router = useRouter();
-  const { user, isLoading, signup, login, sendVerification, verifyEmail, logout } = useAuth();
+  const { user, isLoading, signup, login, sendVerification, verifyEmail, forgotPassword, resetPassword, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [authMode, setAuthMode] = useState<"login" | "signup" | "forgot" | "reset">("login");
   const [authForm, setAuthForm] = useState({ name: "", email: "", password: "", estate: "" });
   const [authError, setAuthError] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(false);
@@ -37,6 +37,10 @@ export function Navbar() {
   const [codeCooldown, setCodeCooldown] = useState(0);
   const [devCode, setDevCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [forgotStep, setForgotStep] = useState<"email" | "code" | "new-password">("email");
+  const [forgotCode, setForgotCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [forgotEmail, setForgotEmail] = useState("");
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -309,13 +313,21 @@ export function Navbar() {
                 <h2 className="text-2xl font-bold">
                   {authMode === "login"
                     ? "Welcome Back"
+                    : authMode === "forgot"
+                    ? "Reset Password"
+                    : authMode === "reset"
+                    ? "Set New Password"
                     : signupStep === "verify"
                     ? "Verify Your Email"
                     : "Join MarketRun"}
                 </h2>
                 <p className="text-muted-foreground mt-1">
-                  {authMode === "login"
-                    ? "Sign in to access your errands"
+                  {authMode === "forgot"
+                    ? "Enter your email to receive a reset code"
+                    : authMode === "reset"
+                    ? "Enter the code and your new password"
+                    : authMode === "login"
+                    ? "Sign in to continue shopping"
                     : signupStep === "verify"
                     ? `We sent a 6-digit code to ${authForm.email}`
                     : "Create an account to start shopping"}
@@ -360,6 +372,20 @@ export function Navbar() {
                     </div>
                   </div>
 
+                  <div className="flex items-center justify-between">
+                    <div /> {/* spacer */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode("forgot");
+                        setAuthError("");
+                      }}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+
                   {authError && (
                     <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{authError}</p>
                   )}
@@ -369,6 +395,111 @@ export function Navbar() {
                       <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
                     )}
                     Sign In
+                  </Button>
+                </form>
+              ) : authMode === "forgot" ? (
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  setIsAuthLoading(true);
+                  setAuthError("");
+                  const result = await forgotPassword(forgotEmail);
+                  setIsAuthLoading(false);
+                  if (result.success) {
+                    setForgotStep("code");
+                    setAuthMode("reset");
+                    if (result.devCode) setDevCode(result.devCode);
+                  } else {
+                    setAuthError(result.error || "Failed to send reset code");
+                  }
+                }} className="space-y-4">
+                  <div>
+                    <Label htmlFor="forgot-email">Email</Label>
+                    <div className="relative mt-1">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="forgot-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        className="pl-10"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  {authError && (
+                    <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{authError}</p>
+                  )}
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={isAuthLoading}>
+                    {isAuthLoading && (
+                      <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
+                    )}
+                    Send Reset Code
+                  </Button>
+                </form>
+              ) : authMode === "reset" ? (
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  setIsAuthLoading(true);
+                  setAuthError("");
+                  const result = await resetPassword(forgotEmail, forgotCode, newPassword);
+                  setIsAuthLoading(false);
+                  if (result.success) {
+                    setAuthMode("login");
+                    setAuthError("");
+                    setForgotStep("email");
+                    setForgotCode("");
+                    setNewPassword("");
+                  } else {
+                    setAuthError(result.error || "Failed to reset password");
+                  }
+                }} className="space-y-4">
+                  {devCode && (
+                    <div className="bg-muted/50 border rounded-lg p-3 text-sm">
+                      <p className="font-medium text-foreground">Dev Mode: Your reset code is</p>
+                      <p className="text-lg font-bold font-mono text-primary mt-1">{devCode}</p>
+                    </div>
+                  )}
+                  <div>
+                    <Label>Reset Code</Label>
+                    <div className="relative mt-1">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Enter 6-digit code"
+                        className="pl-10"
+                        maxLength={6}
+                        value={forgotCode}
+                        onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, ""))}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>New Password</Label>
+                    <div className="relative mt-1">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter new password"
+                        className="pl-10 pr-10"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  {authError && (
+                    <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{authError}</p>
+                  )}
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={isAuthLoading}>
+                    {isAuthLoading && (
+                      <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
+                    )}
+                    Reset Password
                   </Button>
                 </form>
               ) : (
@@ -511,7 +642,14 @@ export function Navbar() {
               <Separator className="my-6" />
 
               <p className="text-center text-sm text-muted-foreground">
-                {authMode === "login" ? (
+                {authMode === "forgot" || authMode === "reset" ? (
+                  <>
+                    Remember your password?{" "}
+                    <button onClick={() => { setAuthMode("login"); setAuthError(""); setForgotStep("email"); }} className="text-primary font-medium hover:underline">
+                      Sign in
+                    </button>
+                  </>
+                ) : authMode === "login" ? (
                   <>
                     Don&apos;t have an account?{" "}
                     <button onClick={() => { setAuthMode("signup"); resetAuth(); }} className="text-primary font-medium hover:underline">

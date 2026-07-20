@@ -58,6 +58,41 @@ export async function getMonnifyToken(): Promise<string> {
   return data.responseBody.accessToken;
 }
 
+// ============================================================
+// GET BANKS (List all supported banks)
+// ============================================================
+export interface MonnifyBank {
+  name: string;
+  code: string;
+  ussdTemplate: string | null;
+  baseUssdCode: string | null;
+  transferUssdTemplate: string | null;
+}
+
+let banksCache: MonnifyBank[] | null = null;
+
+export async function getBanks(): Promise<MonnifyBank[]> {
+  if (banksCache) return banksCache;
+
+  const token = await getMonnifyToken();
+
+  const response = await fetch(`${MONNIFY_BASE_URL}/api/v1/banks`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!data.requestSuccessful || !Array.isArray(data.responseBody)) {
+    throw new Error(data.responseMessage || "Failed to fetch banks");
+  }
+
+  banksCache = data.responseBody;
+  return banksCache!;
+}
+
 export async function initializeTransaction(params: {
   amount: number;
   paymentReference: string;
@@ -286,24 +321,23 @@ export async function verifyBVN(bvn: string): Promise<{ verified: boolean; fullN
 }
 
 // ============================================================
-// NAME ENQUIRY (Verify bank account)
+// VALIDATE BANK ACCOUNT (Name Enquiry / Lookup)
 // ============================================================
 export async function verifyBankAccount(params: {
   bankCode: string;
   accountNumber: string;
-}): Promise<{ verified: boolean; accountName?: string }> {
+}): Promise<{ verified: boolean; accountName?: string; accountNumber?: string; bankCode?: string }> {
   const token = await getMonnifyToken();
 
-  const response = await fetch(`${MONNIFY_BASE_URL}/api/v1/banks/resolve`, {
-    method: "POST",
+  const url = new URL(`${MONNIFY_BASE_URL}/api/v1/disbursements/account/validate`);
+  url.searchParams.set("accountNumber", params.accountNumber);
+  url.searchParams.set("bankCode", params.bankCode);
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      bankCode: params.bankCode,
-      accountNumber: params.accountNumber,
-    }),
   });
 
   const data = await response.json();
@@ -315,6 +349,8 @@ export async function verifyBankAccount(params: {
   return {
     verified: true,
     accountName: data.responseBody?.accountName,
+    accountNumber: data.responseBody?.accountNumber,
+    bankCode: data.responseBody?.bankCode,
   };
 }
 

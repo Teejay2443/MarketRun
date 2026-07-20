@@ -5,7 +5,7 @@ interface OTPEntry {
   code: string;
   email: string;
   expiresAt: number;
-  purpose: "signup" | "login";
+  purpose: "signup" | "login" | "reset-password";
 }
 
 const otpStore = new Map<string, OTPEntry>();
@@ -24,7 +24,7 @@ export function generateOTP(): string {
   return crypto.randomInt(100000, 999999).toString();
 }
 
-export function storeOTP(email: string, purpose: "signup" | "login"): string {
+export function storeOTP(email: string, purpose: "signup" | "login" | "reset-password"): string {
   const code = generateOTP();
   const key = `${email}:${purpose}`;
 
@@ -38,7 +38,7 @@ export function storeOTP(email: string, purpose: "signup" | "login"): string {
   return code;
 }
 
-export function verifyOTP(email: string, code: string, purpose: "signup" | "login"): boolean {
+export function verifyOTP(email: string, code: string, purpose: "signup" | "login" | "reset-password"): boolean {
   const key = `${email}:${purpose}`;
   const entry = otpStore.get(key);
 

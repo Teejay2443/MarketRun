@@ -10,10 +10,24 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendVerificationEmail(email: string, code: string, purpose: "signup" | "login"): Promise<boolean> {
+export async function sendVerificationEmail(email: string, code: string, purpose: "signup" | "login" | "reset-password"): Promise<boolean> {
   const subject = purpose === "signup"
     ? "Verify your MarketRun email"
+    : purpose === "reset-password"
+    ? "Reset your MarketRun password"
     : "Your MarketRun login code";
+
+  const heading = purpose === "signup"
+    ? "Welcome to MarketRun!"
+    : purpose === "reset-password"
+    ? "Reset Your Password"
+    : "Your Login Code";
+
+  const description = purpose === "signup"
+    ? "Verify your email to start shopping with trusted community runners."
+    : purpose === "reset-password"
+    ? "Use the code below to reset your password. If you didn't request this, ignore this email."
+    : "Use the code below to sign in to your account.";
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
@@ -23,12 +37,10 @@ export async function sendVerificationEmail(email: string, code: string, purpose
         </div>
       </div>
       <h1 style="text-align: center; font-size: 24px; margin-bottom: 8px;">
-        ${purpose === "signup" ? "Welcome to MarketRun!" : "Your Login Code"}
+        ${heading}
       </h1>
       <p style="text-align: center; color: #666; margin-bottom: 24px;">
-        ${purpose === "signup"
-          ? "Verify your email to start shopping with trusted community runners."
-          : "Use the code below to sign in to your account."}
+        ${description}
       </p>
       <div style="background: #f8fafc; border: 2px dashed #e2e8f0; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
         <p style="font-size: 14px; color: #94a3b8; margin: 0 0 8px 0;">Your verification code</p>
