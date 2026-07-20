@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "marketrun-hackathon-secret-2026";
-
-function getUser(request: NextRequest): string | null {
-  const token = request.cookies.get("marketrun_token")?.value;
-  if (!token) return null;
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-    return decoded.id;
-  } catch {
-    return null;
-  }
-}
+import { getUser } from "@/lib/auth-utils";
+import { disburseFunds } from "@/lib/monnify";
 
 // GET /api/wallet - Get wallet balance + transactions
 export async function GET(request: NextRequest) {
@@ -64,7 +52,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/wallet - Withdraw funds
+// POST /api/wallet - Withdraw funds via Monnify disbursement
 export async function POST(request: NextRequest) {
   try {
     const userId = getUser(request);
@@ -73,10 +61,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { amount, bankName, accountNumber, accountName } = body;
+    const { amount, bankCode, accountNumber, accountName } = body;
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+    }
+
+    if (!bankCode || !accountNumber || !accountName) {
+      return NextResponse.json({ error: "Bank code, account number, and account name are required" }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({
@@ -92,17 +84,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Insufficient balance" }, { status: 400 });
     }
 
-    // Deduct from wallet
+    const withdrawalRef = `WDR-${Date.now()}-${userId.slice(-6)}`;
+
+    // Deduct from wallet first (optimistic)
     await prisma.user.update({
       where: { id: userId },
       data: { walletBalance: { decrement: amount } },
     });
 
-    return NextResponse.json({
-      success: true,
-      message: `Withdrawal of ₦${amount.toLocaleString()} initiated. Funds will be sent to ${bankName} account ${accountNumber} (${accountName}) within 24 hours.`,
-      newBalance: user.walletBalance - amount,
+    // Create withdrawal transaction record
+    const transaction = await prisma.transaction.create({
+      data: {
+        errandId: (await prisma.errand.findFirst({ where: { shopperId: userId }, orderBy: { createdAt: "desc" }, select: { id: true } }))?.id || "",
+        amount,
+        platformFee: 0,
+        shopperPayout: amount,
+        monnifyRef: withdrawalRef,
+        status: "PENDING",
+      },
     });
+
+    try {
+      // Initiate Monnify disbursement
+      await disburseFunds({
+        amount,
+        bankCode,
+        accountNumber,
+        accountName,
+        narration: `MarketRun wallet withdrawal for ${user.name}`,
+        reference: withdrawalRef,
+      });
+
+      // Update transaction status
+      await prisma.transaction.update({
+        where: { id: transaction.id },
+        data: { status: "PAID" },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Withdrawal of ₦${amount.toLocaleString()} initiated. Funds will be sent to ${accountName} within 24 hours.`,
+        newBalance: user.walletBalance - amount,
+        reference: withdrawalRef,
+      });
+    } catch (disbursementError) {
+      // Rollback wallet deduction on failure
+      await prisma.user.update({
+        where: { id: userId },
+        data: { walletBalance: { increment: amount } },
+      });
+
+      await prisma.transaction.update({
+        where: { id: transaction.id },
+        data: { status: "FAILED" },
+      });
+
+      console.error("Disbursement error:", disbursementError);
+      return NextResponse.json(
+        { error: "Failed to process withdrawal. Please try again." },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error("POST wallet error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

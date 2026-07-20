@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "marketrun-hackathon-secret-2026";
-
-function getUser(request: NextRequest): string | null {
-  const token = request.cookies.get("marketrun_token")?.value;
-  if (!token) return null;
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-    return decoded.id;
-  } catch {
-    return null;
-  }
-}
+import { getUser } from "@/lib/auth-utils";
+import { broadcastStatusChange } from "@/app/api/messages/stream/route";
 
 // GET /api/errands/[id]
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -218,6 +206,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         },
       });
     }
+
+    // Broadcast status change to SSE subscribers
+    broadcastStatusChange(id, updated.status, { updatedAt: updated.updatedAt });
 
     return NextResponse.json(updated);
   } catch (error) {

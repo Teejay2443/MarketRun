@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "marketrun-hackathon-secret-2026";
+import { signToken } from "@/lib/auth-utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+    const token = signToken({ id: user.id, email: user.email });
 
     const response = NextResponse.json({
       id: user.id,

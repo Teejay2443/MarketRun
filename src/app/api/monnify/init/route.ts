@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { initializeTransaction } from "@/lib/monnify";
+import { getUser } from "@/lib/auth-utils";
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = getUser(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { amount, paymentReference, customerName, customerEmail, description, splitCode } = body;
 

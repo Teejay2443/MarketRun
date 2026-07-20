@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "marketrun-hackathon-secret-2026";
-
-function getUser(request: NextRequest): string | null {
-  const token = request.cookies.get("marketrun_token")?.value;
-  if (!token) return null;
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-    return decoded.id;
-  } catch {
-    return null;
-  }
-}
+import { getUser } from "@/lib/auth-utils";
+import { broadcastMessage } from "@/app/api/messages/stream/route";
 
 // GET /api/messages?errandId=xxx
 export async function GET(request: NextRequest) {
@@ -84,6 +72,9 @@ export async function POST(request: NextRequest) {
       },
       include: { sender: { select: { id: true, name: true } } },
     });
+
+    // Broadcast to SSE subscribers
+    broadcastMessage(errandId, message);
 
     return NextResponse.json(message);
   } catch (error) {

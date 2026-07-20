@@ -317,3 +317,46 @@ export async function verifyBankAccount(params: {
     accountName: data.responseBody?.accountName,
   };
 }
+
+// ============================================================
+// DISBURSEMENTS (Single Transfer)
+// ============================================================
+export async function disburseFunds(params: {
+  amount: number;
+  bankCode: string;
+  accountNumber: string;
+  accountName: string;
+  narration: string;
+  reference: string;
+}): Promise<{ reference: string; status: string }> {
+  const token = await getMonnifyToken();
+
+  const response = await fetch(`${MONNIFY_BASE_URL}/api/v1/merchant/transactions/init-transaction`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      amount: params.amount,
+      paymentReference: params.reference,
+      contractCode: MONNIFY_CONTRACT_CODE || "",
+      currencyCode: "NGN",
+      customerName: params.accountName,
+      customerEmail: "disbursement@marketrun.com",
+      description: params.narration,
+      redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard`,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!data.requestSuccessful) {
+    throw new Error(data.responseMessage);
+  }
+
+  return {
+    reference: params.reference,
+    status: "INITIATED",
+  };
+}

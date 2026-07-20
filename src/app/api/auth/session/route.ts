@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/db";
-
-const JWT_SECRET = process.env.JWT_SECRET || "marketrun-hackathon-secret-2026";
+import { verifyToken } from "@/lib/auth-utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +10,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ user: null });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string };
+    const decoded = verifyToken(token);
+
+    if (!decoded) {
+      return NextResponse.json({ user: null });
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },

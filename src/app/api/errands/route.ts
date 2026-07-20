@@ -1,20 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import jwt from "jsonwebtoken";
+import { getUser } from "@/lib/auth-utils";
 
-const JWT_SECRET = process.env.JWT_SECRET || "marketrun-hackathon-secret-2026";
 const PAGE_SIZE = 12;
-
-function getUser(request: NextRequest): string | null {
-  const token = request.cookies.get("marketrun_token")?.value;
-  if (!token) return null;
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-    return decoded.id;
-  } catch {
-    return null;
-  }
-}
 
 // GET /api/errands - List all errands (with filters + pagination)
 export async function GET(request: NextRequest) {

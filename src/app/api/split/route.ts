@@ -1,22 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getMonnifyToken } from "@/lib/monnify";
-import jwt from "jsonwebtoken";
+import { getUser } from "@/lib/auth-utils";
 
-const JWT_SECRET = process.env.JWT_SECRET || "marketrun-hackathon-secret-2026";
 const MONNIFY_BASE_URL = process.env.MONNIFY_BASE_URL || "https://sandbox.monnify.com";
 const MONNIFY_CONTRACT_CODE = process.env.MONNIFY_CONTRACT_CODE;
-
-function getUser(request: NextRequest): string | null {
-  const token = request.cookies.get("marketrun_token")?.value;
-  if (!token) return null;
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-    return decoded.id;
-  } catch {
-    return null;
-  }
-}
 
 // POST /api/split - Create a split payment for an errand
 export async function POST(request: NextRequest) {
