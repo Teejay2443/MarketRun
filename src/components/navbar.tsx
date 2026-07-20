@@ -116,7 +116,7 @@ export function Navbar() {
               {!isLoading && (
                 user ? (
                   <>
-                    <Link href="/dashboard" className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg hover:bg-primary/15 transition-colors">
+                    <Link href="/profile" className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg hover:bg-primary/15 transition-colors">
                       <span className="text-sm font-medium">{user.name.split(" ")[0]}</span>
                     </Link>
                     <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -172,7 +172,7 @@ export function Navbar() {
                     user ? (
                       <>
                         <Link
-                          href="/dashboard"
+                          href="/profile"
                           onClick={() => setIsOpen(false)}
                           className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg"
                         >
