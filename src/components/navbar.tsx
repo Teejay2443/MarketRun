@@ -29,6 +29,7 @@ export function Navbar() {
   const [authForm, setAuthForm] = useState({ name: "", email: "", password: "", estate: "" });
   const [authError, setAuthError] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState<string | null>(null);
 
   // Email verification state
   const [signupStep, setSignupStep] = useState<SignupStep>("details");
@@ -62,6 +63,19 @@ export function Navbar() {
     const timer = setTimeout(() => setCodeCooldown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
   }, [codeCooldown]);
+
+  const handleDemoLogin = async (role: "requester" | "shopper") => {
+    setDemoLoading(role);
+    const accounts = {
+      requester: { email: "adebayo@marketrun.com", password: "password123" },
+      shopper: { email: "kemi@marketrun.com", password: "password123" },
+    };
+    const result = await login(accounts[role].email, accounts[role].password);
+    if (result.success) {
+      router.push(role === "requester" ? "/create" : "/errands");
+    }
+    setDemoLoading(null);
+  };
 
   const handleSendCode = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -196,7 +210,7 @@ export function Navbar() {
               ))}
             </div>
 
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-2">
               {!isLoading && (
                 user ? (
                   <>
@@ -210,12 +224,40 @@ export function Navbar() {
                   </>
                 ) : (
                   <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-primary/20 text-primary hover:bg-primary/5"
+                      onClick={() => handleDemoLogin("requester")}
+                      disabled={demoLoading !== null}
+                    >
+                      {demoLoading === "requester" ? (
+                        <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin mr-1.5" />
+                      ) : (
+                        <User className="w-3.5 h-3.5 mr-1.5" />
+                      )}
+                      Requester
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-accent/30 text-accent hover:bg-accent/5"
+                      onClick={() => handleDemoLogin("shopper")}
+                      disabled={demoLoading !== null}
+                    >
+                      {demoLoading === "shopper" ? (
+                        <div className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin mr-1.5" />
+                      ) : (
+                        <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />
+                      )}
+                      Shopper
+                    </Button>
+                    <div className="w-px h-6 bg-border/50 mx-1" />
                     <Button variant="ghost" size="sm" onClick={() => { setAuthMode("login"); setShowAuth(true); resetAuth(); }}>
-                      <User className="w-4 h-4 mr-2" />
                       Login
                     </Button>
                     <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => { setAuthMode("signup"); setShowAuth(true); resetAuth(); }}>
-                      Get Started
+                      Sign Up
                     </Button>
                   </>
                 )
@@ -269,13 +311,42 @@ export function Navbar() {
                       </>
                     ) : (
                       <>
-                        <Button variant="outline" className="w-full" onClick={() => { setAuthMode("login"); setShowAuth(true); resetAuth(); setIsOpen(false); }}>
-                          <User className="w-4 h-4 mr-2" />
-                          Login
-                        </Button>
-                        <Button className="w-full bg-primary hover:bg-primary/90" onClick={() => { setAuthMode("signup"); setShowAuth(true); resetAuth(); setIsOpen(false); }}>
-                          Get Started
-                        </Button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => handleDemoLogin("requester")}
+                            disabled={demoLoading !== null}
+                          >
+                            {demoLoading === "requester" ? (
+                              <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin mr-2" />
+                            ) : (
+                              <User className="w-4 h-4 mr-2" />
+                            )}
+                            Requester
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => handleDemoLogin("shopper")}
+                            disabled={demoLoading !== null}
+                          >
+                            {demoLoading === "shopper" ? (
+                              <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin mr-2" />
+                            ) : (
+                              <ShoppingBag className="w-4 h-4 mr-2" />
+                            )}
+                            Shopper
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" className="flex-1" onClick={() => { setAuthMode("login"); setShowAuth(true); resetAuth(); setIsOpen(false); }}>
+                            Login
+                          </Button>
+                          <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={() => { setAuthMode("signup"); setShowAuth(true); resetAuth(); setIsOpen(false); }}>
+                            Sign Up
+                          </Button>
+                        </div>
                       </>
                     )
                   )}
