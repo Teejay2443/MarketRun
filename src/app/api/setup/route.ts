@@ -1,38 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import bcrypt from "bcryptjs";
 
+// One-time setup: POST /api/setup?secret=marketrun-admin-setup-2026
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name, estate, role } = await request.json();
+    const { searchParams } = new URL(request.url);
+    const secret = searchParams.get("secret");
 
-    if (!email || !password || !name) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (secret !== "marketrun-admin-setup-2026") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return NextResponse.json({ error: "User already exists" }, { status: 409 });
+    const { email, role } = await request.json();
+
+    if (!email || !role) {
+      return NextResponse.json({ error: "Missing email or role" }, { status: 400 });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
 
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        estate: estate || "Headquarters",
-        role: role || "admin",
-        rating: 5.0,
-        walletBalance: 0,
-        totalEarned: 0,
-      },
+    const updated = await prisma.user.update({
+      where: { email },
+      data: { role },
     });
 
     return NextResponse.json({
       success: true,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: { id: updated.id, name: updated.name, email: updated.email, role: updated.role },
     });
   } catch (error) {
     console.error("Setup error:", error);
