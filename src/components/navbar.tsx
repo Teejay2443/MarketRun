@@ -72,7 +72,7 @@ export function Navbar() {
     };
     const result = await login(accounts[role].email, accounts[role].password);
     if (result.success) {
-      router.push(role === "requester" ? "/create" : "/errands");
+      router.push("/dashboard");
     }
     setDemoLoading(null);
   };
@@ -236,7 +236,7 @@ export function Navbar() {
                       ) : (
                         <User className="w-3.5 h-3.5 mr-1.5" />
                       )}
-                      Requester
+                      Try Demo · Requester
                     </Button>
                     <Button
                       size="sm"
@@ -250,7 +250,7 @@ export function Navbar() {
                       ) : (
                         <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />
                       )}
-                      Shopper
+                      Try Demo · Shopper
                     </Button>
                     <div className="w-px h-6 bg-border/50 mx-1" />
                     <Button variant="ghost" size="sm" onClick={() => { setAuthMode("login"); setShowAuth(true); resetAuth(); }}>
@@ -323,7 +323,7 @@ export function Navbar() {
                             ) : (
                               <User className="w-4 h-4 mr-2" />
                             )}
-                            Requester
+                            Try Demo · Requester
                           </Button>
                           <Button
                             variant="outline"
@@ -336,7 +336,7 @@ export function Navbar() {
                             ) : (
                               <ShoppingBag className="w-4 h-4 mr-2" />
                             )}
-                            Shopper
+                            Try Demo · Shopper
                           </Button>
                         </div>
                         <div className="flex gap-2">

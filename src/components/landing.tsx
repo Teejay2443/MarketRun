@@ -453,7 +453,7 @@ export function CTASection() {
     };
     const result = await login(accounts[role].email, accounts[role].password);
     if (result.success) {
-      router.push(role === "requester" ? "/create" : "/errands");
+      router.push("/dashboard");
     }
     setDemoLoading(null);
   };
@@ -515,7 +515,7 @@ export function CTASection() {
                   ) : (
                     <User className="w-5 h-5 mr-2" />
                   )}
-                  Login as Requester
+                  Try Demo · Requester
                 </Button>
                 <Button
                   size="lg"
@@ -529,7 +529,7 @@ export function CTASection() {
                   ) : (
                     <ShoppingBag className="w-5 h-5 mr-2" />
                   )}
-                  Login as Shopper
+                  Try Demo · Shopper
                 </Button>
               </div>
               <p className="text-primary-foreground/40 text-xs mt-3">
