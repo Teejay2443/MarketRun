@@ -113,7 +113,7 @@ const sidebarItems = [
 ];
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("requester");
   const [myErrands, setMyErrands] = useState<Errand[]>([]);
   const [myJobs, setMyJobs] = useState<Errand[]>([]);
@@ -449,6 +449,14 @@ export default function DashboardPage() {
     browse: browseTotal,
     wallet: wallet?.transactions.length || 0,
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!user) {
     return (

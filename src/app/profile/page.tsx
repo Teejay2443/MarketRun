@@ -29,7 +29,7 @@ import {
 import { useAuth } from "@/lib/auth";
 
 export default function ProfilePage() {
-  const { user, refreshUser } = useAuth();
+  const { user, isLoading, refreshUser } = useAuth();
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "account" | "activity">("overview");
@@ -64,6 +64,14 @@ export default function ProfilePage() {
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!user) {
     return (
