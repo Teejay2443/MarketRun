@@ -152,7 +152,8 @@ export default function ErrandsPage() {
       errand.market.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesMarket = selectedMarket === "all" || errand.market.includes(selectedMarket);
     const matchesStatus = selectedStatus === "all" || errand.status === selectedStatus;
-    return matchesSearch && matchesMarket && matchesStatus;
+    const notMyErrand = !user || errand.requesterId !== user.id;
+    return matchesSearch && matchesMarket && matchesStatus && notMyErrand;
   });
 
   const canAccept = (errand: Errand) => {
