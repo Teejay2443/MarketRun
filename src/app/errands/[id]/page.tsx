@@ -220,7 +220,7 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
 
     try {
       const totalAmount = errand.budget + errand.reward;
-      const paymentRef = errand.paymentRef || `MRN-${Date.now()}`;
+      const paymentRef = errand.paymentRef || `MRN-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
       // Update errand with paymentRef if it doesn't have one
       if (!errand.paymentRef) {

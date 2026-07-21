@@ -196,7 +196,7 @@ function CreateErrandPageContent() {
 
     try {
       const totalAmount = calculateTotal() + formData.reward;
-      const paymentRef = `MRN-${Date.now()}`;
+      const paymentRef = `MRN-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
       const errandRes = await fetch("/api/errands", {
         method: "POST",
