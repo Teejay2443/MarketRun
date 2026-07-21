@@ -39,9 +39,9 @@ function SuccessContent() {
         const verifyRes = await fetch(`/api/monnify/verify?ref=${encodeURIComponent(ref)}`);
         const verifyData = await verifyRes.json();
 
-        const paymentSuccessful = verifyData.paymentSuccessful || verifyData.status === "SUCCESS" || verifyData.completed;
+        const paymentSuccessful = verifyData.paymentStatus === "PAID" || verifyData.paymentStatus === "OVERPAID";
 
-        if (!verifyData || (!paymentSuccessful && !verifyData.requestSuccessful)) {
+        if (!verifyData || !paymentSuccessful) {
           setStatus("error");
           setMessage("Payment verification failed. Please contact support.");
           return;

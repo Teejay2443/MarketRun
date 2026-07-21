@@ -26,8 +26,8 @@ interface VerifyTransactionResponse {
   requestSuccessful: boolean;
   responseMessage: string;
   responseBody: {
-    transactionRef: string;
-    paymentRef: string;
+    transactionReference: string;
+    paymentReference: string;
     amountPaid: number;
     totalPayable: number;
     settlementAmount: number;
@@ -162,7 +162,8 @@ export async function verifyTransaction(transactionRef: string): Promise<VerifyT
 
 export function verifyWebhookSignature(payload: string, signature: string): boolean {
   const crypto = require("crypto");
-  const hash = crypto.createHmac("sha512", MONNIFY_SECRET_KEY).update(payload).digest("hex");
+  // Monnify docs: SHA-512(client secret key + object of request body)
+  const hash = crypto.createHash("sha512").update(MONNIFY_SECRET_KEY + payload).digest("hex");
   return hash === signature;
 }
 
@@ -367,7 +368,7 @@ export async function disburseFunds(params: {
 }): Promise<{ reference: string; status: string }> {
   const token = await getMonnifyToken();
 
-  const response = await fetch(`${MONNIFY_BASE_URL}/api/v1/merchant/transactions/init-transaction`, {
+  const response = await fetch(`${MONNIFY_BASE_URL}/api/v1/merchant/transfer`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -375,13 +376,12 @@ export async function disburseFunds(params: {
     },
     body: JSON.stringify({
       amount: params.amount,
-      paymentReference: params.reference,
-      contractCode: MONNIFY_CONTRACT_CODE || "",
-      currencyCode: "NGN",
-      customerName: params.accountName,
-      customerEmail: "disbursement@marketrun.com",
-      description: params.narration,
-      redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard`,
+      reference: params.reference,
+      narration: params.narration,
+      destinationBankCode: params.bankCode,
+      destinationAccountNumber: params.accountNumber,
+      destinationAccountName: params.accountName,
+      currency: "NGN",
     }),
   });
 
@@ -393,6 +393,6 @@ export async function disburseFunds(params: {
 
   return {
     reference: params.reference,
-    status: "INITIATED",
+    status: data.responseBody?.status || "PENDING",
   };
 }

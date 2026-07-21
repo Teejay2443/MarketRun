@@ -1,17 +1,18 @@
 describe("Webhook Signature Verification", () => {
   const crypto = require("crypto");
 
-  // Simulate the verifyWebhookSignature function from monnify.ts
+  // Simulate the fixed verifyWebhookSignature function from monnify.ts
+  // Monnify docs: SHA-512(client secret key + object of request body)
   function verifyWebhookSignature(payload: string, signature: string, secretKey: string): boolean {
-    const hash = crypto.createHmac("sha512", secretKey).update(payload).digest("hex");
+    const hash = crypto.createHash("sha512").update(secretKey + payload).digest("hex");
     return hash === signature;
   }
 
   const testSecret = "test-monnify-secret-key";
 
-  it("should verify a valid HMAC-SHA512 signature", () => {
+  it("should verify a valid SHA-512 signature (secretKey + payload)", () => {
     const payload = '{"event":"SUCCESSFUL_COLLECTION","data":{"amount":5000}}';
-    const signature = crypto.createHmac("sha512", testSecret).update(payload).digest("hex");
+    const signature = crypto.createHash("sha512").update(testSecret + payload).digest("hex");
 
     expect(verifyWebhookSignature(payload, signature, testSecret)).toBe(true);
   });
@@ -25,7 +26,7 @@ describe("Webhook Signature Verification", () => {
 
   it("should reject signature from different secret", () => {
     const payload = '{"event":"SUCCESSFUL_COLLECTION"}';
-    const signature = crypto.createHmac("sha512", "different-secret").update(payload).digest("hex");
+    const signature = crypto.createHash("sha512").update("different-secret" + payload).digest("hex");
 
     expect(verifyWebhookSignature(payload, signature, testSecret)).toBe(false);
   });
@@ -37,22 +38,22 @@ describe("Webhook Signature Verification", () => {
 
   it("should produce consistent signatures for same input", () => {
     const payload = '{"event":"PAYMENT","ref":"MRN-123"}';
-    const sig1 = crypto.createHmac("sha512", testSecret).update(payload).digest("hex");
-    const sig2 = crypto.createHmac("sha512", testSecret).update(payload).digest("hex");
+    const sig1 = crypto.createHash("sha512").update(testSecret + payload).digest("hex");
+    const sig2 = crypto.createHash("sha512").update(testSecret + payload).digest("hex");
     expect(sig1).toBe(sig2);
   });
 
   it("should produce different signatures for different payloads", () => {
     const payload1 = '{"event":"PAYMENT","amount":1000}';
     const payload2 = '{"event":"PAYMENT","amount":2000}';
-    const sig1 = crypto.createHmac("sha512", testSecret).update(payload1).digest("hex");
-    const sig2 = crypto.createHmac("sha512", testSecret).update(payload2).digest("hex");
+    const sig1 = crypto.createHash("sha512").update(testSecret + payload1).digest("hex");
+    const sig2 = crypto.createHash("sha512").update(testSecret + payload2).digest("hex");
     expect(sig1).not.toBe(sig2);
   });
 
   it("should use SHA-512 (128 hex characters)", () => {
     const payload = "test";
-    const signature = crypto.createHmac("sha512", testSecret).update(payload).digest("hex");
+    const signature = crypto.createHash("sha512").update(testSecret + payload).digest("hex");
     expect(signature).toHaveLength(128);
   });
 });
