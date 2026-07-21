@@ -54,8 +54,9 @@ export async function POST(request: NextRequest) {
     // Return 200 immediately per Monnify best practices, process async
     const processAsync = async () => {
       try {
-        switch (eventType) {
-          case "SUCCESSFUL_COLLECTION": {
+    switch (eventType) {
+      case "SUCCESSFUL_COLLECTION":
+      case "SUCCESSFUL_TRANSACTION": {
             const paymentRef = eventData.paymentReference || eventData.paymentRef;
             const monnifyRef = eventData.transactionReference || eventData.transactionRef;
 
@@ -89,7 +90,8 @@ export async function POST(request: NextRequest) {
             break;
           }
 
-          case "FAILED_COLLECTION": {
+          case "FAILED_COLLECTION":
+      case "FAILED_TRANSACTION": {
             const paymentRef = eventData.paymentReference || eventData.paymentRef;
             console.error(`Payment failed for ref: ${paymentRef}`);
 

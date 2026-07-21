@@ -137,19 +137,19 @@ export async function initializeTransaction(params: {
   return data;
 }
 
-export async function verifyTransaction(transactionRef: string): Promise<VerifyTransactionResponse> {
+export async function verifyTransaction(paymentReference: string): Promise<VerifyTransactionResponse> {
   const token = await getMonnifyToken();
 
-  const response = await fetch(
-    `${MONNIFY_BASE_URL}/api/v1/merchant/transactions/verify/${transactionRef}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  const url = new URL(`${MONNIFY_BASE_URL}/api/v2/merchant/transactions/query`);
+  url.searchParams.set("paymentReference", paymentReference);
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
 
   const data: VerifyTransactionResponse = await response.json();
 
