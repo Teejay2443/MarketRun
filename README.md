@@ -48,8 +48,9 @@ MarketRun connects people who need groceries with community members already head
 
 | Role | Email | Password |
 |------|-------|----------|
-| Shopper | kemi@marketrun.com | password123 |
 | Requester | adebayo@marketrun.com | password123 |
+| Shopper | kemi@marketrun.com | password123 |
+| Admin | admin@marketrun.com | password123 |
 
 ---
 

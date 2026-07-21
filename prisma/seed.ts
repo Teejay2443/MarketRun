@@ -73,6 +73,20 @@ async function main() {
     },
   });
 
+  // === ADMIN ACCOUNT ===
+  const admin = await prisma.user.create({
+    data: {
+      name: "MarketRun Admin",
+      email: "admin@marketrun.com",
+      password,
+      estate: "Headquarters",
+      role: "admin",
+      rating: 5.0,
+      walletBalance: 0,
+      totalEarned: 0,
+    },
+  });
+
   // ============================================================
   // ERRANDS — Match demo script exactly
   // ============================================================
