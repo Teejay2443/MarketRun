@@ -85,19 +85,17 @@ function CreateErrandPageContent() {
 
     // Pick up items from AI chat
     if (searchParams.get("from") === "chat") {
-      const storedItems = sessionStorage.getItem("ai-selected-items");
-      if (storedItems) {
+      const storedData = sessionStorage.getItem("ai-selected-items");
+      if (storedData) {
         try {
-          const items = JSON.parse(storedItems) as Array<{
-            name: string;
-            quantity: string;
-            maxBudget: number;
-            category: string;
-            note: string;
-          }>;
+          const data = JSON.parse(storedData);
+          const items = Array.isArray(data) ? data : data.items;
           setFormData((prev) => ({
             ...prev,
-            items: items.map((item) => ({
+            title: data.title || prev.title,
+            description: data.description || prev.description,
+            market: data.market || prev.market,
+            items: items.map((item: { name: string; quantity: string; maxBudget: number; category?: string }) => ({
               name: item.name,
               quantity: item.quantity,
               brand: "",
@@ -105,7 +103,6 @@ function CreateErrandPageContent() {
             })),
           }));
           sessionStorage.removeItem("ai-selected-items");
-          setCurrentStep(2);
           toast.success(`Added ${items.length} items from AI suggestions`);
         } catch {
           // Ignore parse errors

@@ -129,10 +129,28 @@ export function AIChat({ open, onClose }: AIChatProps) {
       return;
     }
 
-    // Store selected items in sessionStorage for the create page to pick up
+    // Generate a title from the selected items
+    const itemNames = selectedItems.map((i) => i.name);
+    const autoTitle = itemNames.length <= 3
+      ? `Buy ${itemNames.join(", ")}`
+      : `Buy ${itemNames.slice(0, 3).join(", ")} and ${itemNames.length - 3} more items`;
+
+    const autoDescription = selectedItems
+      .map((i) => `${i.name} - ${i.quantity}${i.note ? ` (${i.note})` : ""}`)
+      .join("\n");
+
+    const totalEstimate = selectedItems.reduce((sum, i) => sum + (i.maxBudget || 0), 0);
+
+    // Store selected items + auto-filled details for the create page
     sessionStorage.setItem(
       "ai-selected-items",
-      JSON.stringify(selectedItems)
+      JSON.stringify({
+        items: selectedItems,
+        title: autoTitle,
+        description: autoDescription,
+        market: selectedItems[0]?.category || "",
+        budget: totalEstimate,
+      })
     );
 
     router.push("/create?ai=true&from=chat");
