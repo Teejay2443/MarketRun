@@ -31,11 +31,12 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  errandsAsRequester Errand[]   @relation("RequesterErrands")
-  errandsAsShopper   Errand[]   @relation("ShopperErrands")
-  messagesSent       Message[]  @relation("SentMessages")
-  reviewsGiven       Review[]   @relation("GivenReviews")
-  reviewsReceived    Review[]   @relation("ReceivedReviews")
+  errandsAsRequester Errand[]       @relation("RequesterErrands")
+  errandsAsShopper   Errand[]       @relation("ShopperErrands")
+  messagesSent       Message[]      @relation("SentMessages")
+  reviewsGiven       Review[]       @relation("GivenReviews")
+  reviewsReceived    Review[]       @relation("ReceivedReviews")
+  notifications      Notification[]
 }
 
 model Errand {
@@ -127,4 +128,17 @@ model Review {
   errand   Errand @relation(fields: [errandId], references: [id])
   reviewer User   @relation("GivenReviews", fields: [reviewerId], references: [id])
   reviewee User   @relation("ReceivedReviews", fields: [revieweeId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  errandId  String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
 }

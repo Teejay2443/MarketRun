@@ -40,9 +40,17 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# demo
+# demo & scripts & videos
 DEMO_SCRIPT.md
-demo-assets/
 PRESENTATION-SCRIPT.md
+demo-assets/
 MarketRun-Presentation.pptx
 create-presentation.js
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*-script.*
+*Script*
+temp_query.sql

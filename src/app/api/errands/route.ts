@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/auth-utils";
+import { createNotification } from "@/lib/create-notification";
 
 const PAGE_SIZE = 12;
 
@@ -122,6 +123,22 @@ export async function POST(request: NextRequest) {
         details: JSON.stringify({ title, market, budget, reward }),
       },
     });
+
+    // Notify all shoppers about new errand
+    const shoppers = await prisma.user.findMany({
+      where: { role: "shopper", id: { not: userId } },
+      select: { id: true },
+    });
+    const requesterName = (await prisma.user.findUnique({ where: { id: userId }, select: { name: true } }))?.name || "Someone";
+    for (const shopper of shoppers) {
+      createNotification({
+        userId: shopper.id,
+        type: "NEW_ERRAND",
+        title: "New Errand Available",
+        message: `${requesterName} posted "${title}" at ${market} — ₦${(budget + reward).toLocaleString()} total`,
+        errandId: errand.id,
+      });
+    }
 
     return NextResponse.json(errand);
   } catch (error) {

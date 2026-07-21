@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/auth-utils";
 import { broadcastMessage } from "@/app/api/messages/stream/route";
+import { createNotification } from "@/lib/create-notification";
 
 // GET /api/messages?errandId=xxx
 export async function GET(request: NextRequest) {
@@ -75,6 +76,19 @@ export async function POST(request: NextRequest) {
 
     // Broadcast to SSE subscribers
     broadcastMessage(errandId, message);
+
+    // Notify the other person in the errand
+    const recipientId = userId === errand.requesterId ? errand.shopperId : errand.requesterId;
+    if (recipientId) {
+      const senderName = (await prisma.user.findUnique({ where: { id: userId }, select: { name: true } }))?.name || "Someone";
+      createNotification({
+        userId: recipientId,
+        type: "NEW_MESSAGE",
+        title: "New Message",
+        message: `${senderName} sent you a message on "${errand.title}"`,
+        errandId,
+      });
+    }
 
     return NextResponse.json(message);
   } catch (error) {

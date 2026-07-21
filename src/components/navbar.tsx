@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Menu, X, ShoppingBag, Plus, Home, Search, User, Mail, Lock, UserPlus, LogOut, ShieldCheck, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { Menu, X, ShoppingBag, Plus, Home, Search, User, Mail, Lock, UserPlus, LogOut, ShieldCheck, ArrowLeft, Eye, EyeOff, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/lib/auth";
+import { useNotifications } from "@/lib/notifications";
 
 const navLinks = [
   { href: "/errands", label: "Browse Errands", icon: Search },
@@ -23,8 +24,10 @@ type SignupStep = "details" | "verify";
 export function Navbar() {
   const router = useRouter();
   const { user, isLoading, signup, login, sendVerification, verifyEmail, forgotPassword, resetPassword, logout } = useAuth();
+  const { unreadCount, notifications, markAsRead, markAllAsRead } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup" | "forgot" | "reset">("login");
   const [authForm, setAuthForm] = useState({ name: "", email: "", password: "", estate: "" });
   const [authError, setAuthError] = useState("");
@@ -48,6 +51,7 @@ export function Navbar() {
       const ce = e as CustomEvent;
       setAuthMode(ce.detail?.mode || "signup");
       setShowAuth(true);
+      setShowNotifications(false);
       setSignupStep("details");
       setVerificationCode("");
       setCodeSent(false);
@@ -56,6 +60,19 @@ export function Navbar() {
     window.addEventListener("open-auth", handler);
     return () => window.removeEventListener("open-auth", handler);
   }, []);
+
+  // Close notification dropdown on outside click
+  useEffect(() => {
+    if (!showNotifications) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-notification-bell]")) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [showNotifications]);
 
   // Cooldown timer for resend
   useEffect(() => {
@@ -214,6 +231,60 @@ export function Navbar() {
               {!isLoading && (
                 user ? (
                   <>
+                    {/* Notification Bell */}
+                    <div className="relative" data-notification-bell>
+                      <button
+                        onClick={() => { setShowNotifications(!showNotifications); setShowAuth(false); }}
+                        className="relative p-2 rounded-lg hover:bg-muted transition-colors"
+                      >
+                        <Bell className="w-5 h-5 text-muted-foreground" />
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                            {unreadCount > 9 ? "9+" : unreadCount}
+                          </span>
+                        )}
+                      </button>
+                      {showNotifications && (
+                        <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border/50 rounded-xl shadow-xl z-50 max-h-96 overflow-hidden">
+                          <div className="flex items-center justify-between p-3 border-b border-border/50">
+                            <p className="font-semibold text-sm">Notifications</p>
+                            {unreadCount > 0 && (
+                              <button onClick={markAllAsRead} className="text-xs text-primary hover:underline">
+                                Mark all read
+                              </button>
+                            )}
+                          </div>
+                          <div className="overflow-y-auto max-h-80">
+                            {notifications.length === 0 ? (
+                              <p className="text-center text-sm text-muted-foreground py-8">No notifications yet</p>
+                            ) : (
+                              notifications.slice(0, 20).map((n) => (
+                                <div
+                                  key={n.id}
+                                  onClick={() => {
+                                    if (!n.read) markAsRead([n.id]);
+                                    if (n.errandId) window.location.href = `/errands/${n.errandId}`;
+                                    setShowNotifications(false);
+                                  }}
+                                  className={`p-3 border-b border-border/30 cursor-pointer hover:bg-muted/50 transition-colors ${!n.read ? "bg-primary/5" : ""}`}
+                                >
+                                  <div className="flex items-start gap-2">
+                                    {!n.read && <span className="w-2 h-2 bg-primary rounded-full mt-1.5 shrink-0" />}
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-medium truncate">{n.title}</p>
+                                      <p className="text-xs text-muted-foreground line-clamp-2">{n.message}</p>
+                                      <p className="text-[10px] text-muted-foreground mt-1">
+                                        {new Date(n.createdAt).toLocaleString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <Link href="/profile" className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg hover:bg-primary/15 transition-colors">
                       <span className="text-sm font-medium">{user.name.split(" ")[0]}</span>
                     </Link>
@@ -293,6 +364,20 @@ export function Navbar() {
                     {link.label}
                   </Link>
                 ))}
+                {user && (
+                  <button
+                    onClick={() => { setIsOpen(false); }}
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors w-full text-left"
+                  >
+                    <Bell className="w-5 h-5" />
+                    Notifications
+                    {unreadCount > 0 && (
+                      <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                )}
                 <div className="pt-3 space-y-2">
                   {!isLoading && (
                     user ? (

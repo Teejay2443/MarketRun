@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/auth-utils";
 import { broadcastStatusChange } from "@/app/api/messages/stream/route";
+import { createNotification } from "@/lib/create-notification";
 
 // GET /api/errands/[id]
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -209,6 +210,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // Broadcast status change to SSE subscribers
     broadcastStatusChange(id, updated.status, { updatedAt: updated.updatedAt });
+
+    // Send notifications based on status change
+    if (updated.status === "ACCEPTED" && errand.shopperId !== userId) {
+      // Shopper accepted — notify requester
+      const shopperName = (await prisma.user.findUnique({ where: { id: userId }, select: { name: true } }))?.name || "A shopper";
+      createNotification({
+        userId: errand.requesterId,
+        type: "SHOPPER_ACCEPTED",
+        title: "Errand Accepted!",
+        message: `${shopperName} accepted your errand "${errand.title}"`,
+        errandId: id,
+      });
+    }
 
     return NextResponse.json(updated);
   } catch (error) {
