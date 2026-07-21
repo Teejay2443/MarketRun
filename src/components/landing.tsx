@@ -21,6 +21,7 @@ import {
   Brain,
   AlertTriangle,
   BarChart3,
+  User,
 } from "lucide-react";
 
 const stats = [
@@ -432,8 +433,9 @@ export function TestimonialsSection() {
 }
 
 export function CTASection() {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const router = useRouter();
+  const [demoLoading, setDemoLoading] = useState<string | null>(null);
 
   const handlePostErrand = () => {
     if (user) {
@@ -441,6 +443,19 @@ export function CTASection() {
     } else {
       window.dispatchEvent(new CustomEvent("open-auth", { detail: { mode: "signup" } }));
     }
+  };
+
+  const handleDemoLogin = async (role: "requester" | "shopper") => {
+    setDemoLoading(role);
+    const accounts = {
+      requester: { email: "adebayo@marketrun.com", password: "password123" },
+      shopper: { email: "kemi@marketrun.com", password: "password123" },
+    };
+    const result = await login(accounts[role].email, accounts[role].password);
+    if (result.success) {
+      router.push(role === "requester" ? "/create" : "/errands");
+    }
+    setDemoLoading(null);
   };
 
   return (
@@ -481,6 +496,45 @@ export function CTASection() {
                   Become a Shopper
                 </Button>
               </Link>
+            </div>
+
+            <div className="mt-8 pt-8 border-t border-white/20">
+              <p className="text-primary-foreground/60 text-sm mb-4">
+                Quick Demo — Try it now with pre-loaded accounts
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-white/30 text-white hover:bg-white/10 text-base px-6"
+                  onClick={() => handleDemoLogin("requester")}
+                  disabled={demoLoading !== null}
+                >
+                  {demoLoading === "requester" ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                  ) : (
+                    <User className="w-5 h-5 mr-2" />
+                  )}
+                  Login as Requester
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-white/30 text-white hover:bg-white/10 text-base px-6"
+                  onClick={() => handleDemoLogin("shopper")}
+                  disabled={demoLoading !== null}
+                >
+                  {demoLoading === "shopper" ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                  ) : (
+                    <ShoppingBag className="w-5 h-5 mr-2" />
+                  )}
+                  Login as Shopper
+                </Button>
+              </div>
+              <p className="text-primary-foreground/40 text-xs mt-3">
+                adebayo@marketrun.com (requester) · kemi@marketrun.com (shopper) · password: password123
+              </p>
             </div>
           </div>
         </motion.div>
