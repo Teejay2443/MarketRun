@@ -497,7 +497,7 @@ export default function ErrandDetailPage({ params }: { params: Promise<{ id: str
   const currentStatusIndex = statusOrder.indexOf(errand.status);
   const isRequester = user && errand.requesterId === user.id;
   const isShopper = user && errand.shopperId === user.id;
-  const canFund = isRequester && (errand.status === "OPEN" || errand.status === "ACCEPTED");
+  const canFund = isRequester && (errand.status === "OPEN" || errand.status === "ACCEPTED") && errand.paymentStatus !== "PAID";
   const canMarkShopping = isShopper && errand.status === "ACCEPTED";
   const canMarkDelivered = isShopper && errand.status === "SHOPPING";
   const canConfirm = isRequester && errand.status === "DELIVERED";

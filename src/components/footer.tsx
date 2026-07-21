@@ -90,7 +90,7 @@ export function Footer() {
             &copy; 2026 MarketRun. All rights reserved.
           </p>
           <p className="text-sm text-background/70">
-            Built with <span className="text-secondary">Monnify</span> for API Conference Lagos 2026
+            Powered by <span className="text-secondary">Monnify</span> for API Conference Lagos 2026
           </p>
         </div>
       </div>
