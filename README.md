@@ -69,6 +69,7 @@ MarketRun connects people who need groceries with community members already head
 1. **Post an Errand** — Describe what you need, pick your market, set your budget and reward
 2. **Shopper Accepts** — A neighbor already heading to the market picks up your errand
 3. **Track & Confirm** — Real-time messaging, status timeline, and escrow-protected payment
+4. **In-App Notifications** — Toast alerts for new messages, new errands, and shopper activity via real-time SSE streaming
 
 ---
 
@@ -237,7 +238,11 @@ marketrun/
 | PATCH | `/api/errands/[id]` | Update errand status |
 | POST | `/api/messages` | Send message |
 | GET | `/api/messages/[errandId]` | Get errand messages |
+| GET | `/api/messages/stream` | SSE real-time message stream |
 | POST | `/api/reviews` | Submit shopper review |
+| GET | `/api/notifications` | Get user notifications |
+| PATCH | `/api/notifications` | Mark notifications as read |
+| GET | `/api/notifications/stream` | SSE real-time notification stream |
 | GET | `/api/wallet` | Get wallet balance |
 | GET | `/api/wallet/transactions` | Transaction history |
 | POST | `/api/wallet/withdraw` | Request withdrawal |
@@ -257,6 +262,7 @@ marketrun/
 | **AuditLog** | Full audit trail of all payment state changes |
 | **Message** | In-app real-time messaging between requester and shopper |
 | **Review** | 1-5 star ratings with comments, auto-averaged on user profile |
+| **Notification** | In-app notification tracking — new messages, errand activity, shopper accepts |
 
 ---
 
